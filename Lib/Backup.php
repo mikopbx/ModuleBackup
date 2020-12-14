@@ -614,7 +614,7 @@ class Backup extends PbxExtensionBase
 
             $out         = [];
             $timeoutPath = Util::which('timeout');
-            $command     = "{$timeoutPath} -t 3 ls -l {$backup_dir}";
+            $command     = "{$timeoutPath} 3 ls -l {$backup_dir}";
             Processes::mwExec($command, $out);
             $response = trim(implode('', $out));
             if ('Terminated' === $response) {
