@@ -25,6 +25,7 @@ class WorkerBackup extends WorkerBase
         if (empty($id)) {
             exit;
         }
+        Util::mwMkdir(Backup::getBackupDir(), true);
 
         if ('none' !== $id) {
             $b = new Backup($id);
@@ -69,11 +70,12 @@ class WorkerBackup extends WorkerBase
                         $findPath = Util::which('find');
                         $sortPath = Util::which('sort');
                         $rmPath   = Util::which('rm');
-                        Processes::mwExec("{$findPath} {$backup_dir} -mindepth 1 -type d  | {$sortPath}", $out);
+                        Processes::mwExec("{$findPath} {$backup_dir} -mindepth 1 -maxdepth 1 -type d  | {$sortPath}", $out);
                         if (count($out) >= $res->keep_older_versions) {
                             $count_dir = count($out) - $res->keep_older_versions;
-                            for ($count_dir; $count_dir >= 0; $count_dir--) {
+                            while ($count_dir >= 0){
                                 Processes::mwExec("{$rmPath} -rf {$out[$count_dir]}");
+                                $count_dir--;
                             }
                         }
                     }

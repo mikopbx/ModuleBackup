@@ -24,41 +24,21 @@ class BackupConf extends ConfigClass
      */
     public function createCronTasks(&$tasks): void
     {
-        if (Util::isSystemctl()) {
-            $cron_user = 'root ';
-        } else {
-            $cron_user = '';
-        }
-
+        $cron_user = $this->getCronUser();
         $commands = BackupRules::find('enabled="1"');
         foreach ($commands as $cmd) {
-            $day      = ('0' === $cmd->every) ? '*' : $cmd->every;
-            $arr_time = explode(':', $cmd->at_time);
-            if (count($arr_time) !== 2) {
-                $h = '*';
-                $m = '*';
-            } else {
-                $h = $arr_time[0];
-                if ($h === '0') {
-                    $h = '*';
-                }
-                $m = $arr_time[1];
-                $m = (strpos($m, '0') === 0) ? substr($m, 1, 1) : $m;
-                if ($m === '0') {
-                    $m = '0';
-                }
-            }
-
-            if ('*' === $h && '*' === $m && '*' === $day) {
+            $time = $this->getExecutionTime($cmd);
+            if ($time === '') {
                 // Не корректно описано расписание.
                 continue;
             }
-            $workerPath = Util::getFilePathByClassName(WorkerBackup::class);
-            $nohupPath = Util::which('nohup');
-            $phpPath = Util::which('php');
-            $command     = "{$nohupPath} {$phpPath} -f {$workerPath} ";
-            $params      = "none backup {$cmd->id} > /dev/null 2>&1 &";
-            $mast_have[] = "{$m} {$h} * * {$day} {$cron_user}{$command} {$params}\n";
+            $workerPath     = Util::getFilePathByClassName(WorkerBackup::class);
+            $nohupPath      = Util::which('nohup');
+            $phpPath        = Util::which('php');
+            $command        = "{$nohupPath} {$phpPath} -f {$workerPath} ";
+            $params         = "none backup {$cmd->id}";
+
+            $tasks[] = "{$time} {$cron_user}{$command} {$params} > /dev/null 2>&1 &\n";
         }
     }
 
@@ -130,6 +110,51 @@ class BackupConf extends ConfigClass
         if ($data['model'] === BackupRules::class) {
             System::invokeActions(['cron' => 0]);
         }
+    }
+
+    /**
+     * Возвращает время выполнения операции для Cron.
+     * @param BackupRules $cmd
+     * @return string
+     */
+    private function getExecutionTime(BackupRules $cmd): string{
+        $day = ('0' === $cmd->every) ? '*' : $cmd->every;
+        $arr_time = explode(':', $cmd->at_time);
+        if (count($arr_time) !== 2) {
+            $h = '*';
+            $m = '*';
+        } else {
+            $h = $arr_time[0];
+            if ($h === '0') {
+                $h = '*';
+            }
+            $m = $arr_time[1];
+            $m = (strpos($m, '0') === 0) ? $m[1] : $m;
+            if ($m === '0') {
+                $m = '0';
+            }
+        }
+
+        if ('*' === $h && '*' === $m && '*' === $day) {
+            // Не корректно описано расписание.
+            $time = '';
+        } else {
+            $time = "{$m} {$h} * * {$day}";
+        }
+        return $time;
+    }
+
+    /**
+     * Возвращает пользователя Cron.
+     * @return string
+     */
+    private function getCronUser(): string{
+        if (Util::isSystemctl()) {
+            $cron_user = 'root ';
+        } else {
+            $cron_user = '';
+        }
+        return $cron_user;
     }
 
 }
