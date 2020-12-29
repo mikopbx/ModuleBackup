@@ -18,12 +18,12 @@ class WorkerBackup extends WorkerBase
     public function start($argv): void
     {
         if (count($argv) < 3) {
-            exit;
+            return;
         }
 
         $id = trim($argv[1]);
         if (empty($id)) {
-            exit;
+            return;
         }
         Util::mwMkdir(Backup::getBackupDir(), true);
 
@@ -61,7 +61,7 @@ class WorkerBackup extends WorkerBase
                     }
                     if ( ! $disk_mounted) {
                         Util::sysLogMsg('Backup', 'Failed to mount backup disk...', LOG_ERR);
-                        exit;
+                        return;
                     }
 
                     // Удаляем старые резервные копии, если необходимо.

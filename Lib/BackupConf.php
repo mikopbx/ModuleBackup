@@ -118,7 +118,8 @@ class BackupConf extends ConfigClass
      * @return string
      */
     private function getExecutionTime(BackupRules $cmd): string{
-        $day = ('0' === $cmd->every) ? '*' : $cmd->every;
+        $every = (string)$cmd->every;
+        $day = ('0' === $every) ? '*' : $every;
         $arr_time = explode(':', $cmd->at_time);
         if (count($arr_time) !== 2) {
             $h = '*';
