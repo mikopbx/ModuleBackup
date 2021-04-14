@@ -1172,6 +1172,14 @@ class Backup extends PbxExtensionBase
                             $this->dirs_mem['media']
                         ) . '/' . str_replace('/', '\/', $this->dirs['media']) . '/g\'';
                 }
+
+                if($filename === 'mikopbx.db'){
+                    $grepPath    = Util::which('grep');
+                    $dmpDbFile   = tempnam('/tmp', 'storage');
+                    $grepOptions =" -e '^INSERT INTO m_Storage'  -e '^INSERT INTO \"m_Storage'";
+                    system("{$sqlite3Path} {$result_file} .dump | {$grepPath} {$grepOptions} > ". $dmpDbFile);
+                }
+
                 // Выполняем копирование через dump.
                 // Наиболее безопасный вариант.
                 Processes::mwExec("{$rmPath} -rf {$result_file}* ");
@@ -1179,6 +1187,14 @@ class Backup extends PbxExtensionBase
                     "{$sqlite3Path} '{$this->result_dir}{$filename}' .dump $sed_command | {$sqlite3Path} '{$result_file}' ",
                     $arr_out
                 );
+
+                if($filename === 'mikopbx.db'){
+                    system("{$sqlite3Path} {$result_file} 'DELETE FROM m_Storage'");
+                    // Восстанавливаем настройки из файла бекапа.
+                    system("{$sqlite3Path} {$result_file} < {$dmpDbFile}");
+                    unlink($dmpDbFile);
+                }
+
                 Util::addRegularWWWRights($result_file);
             } else {
                 // Просто копируем файл.
