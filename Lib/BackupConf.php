@@ -125,17 +125,9 @@ class BackupConf extends ConfigClass
             $h = '*';
             $m = '*';
         } else {
-            $h = $arr_time[0];
-            if ($h === '0') {
-                $h = '*';
-            }
-            $m = $arr_time[1];
+            [$h, $m] = $arr_time;
             $m = (strpos($m, '0') === 0) ? $m[1] : $m;
-            if ($m === '0') {
-                $m = '0';
-            }
         }
-
         if ('*' === $h && '*' === $m && '*' === $day) {
             // Не корректно описано расписание.
             $time = '';
