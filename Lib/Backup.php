@@ -43,6 +43,7 @@ class Backup extends PbxExtensionBase
             'cdr_db_path'      => $this->config->path('cdrDatabase.dbfile'),
             'tmp'              => $this->config->path('core.tempDir'),
         ];
+
         $this->dirs_mem = self::getAsteriskDirsMem();
         // Проверим особенность бекапа на сетевой диск.
         $duPath      = Util::which('du');
@@ -598,20 +599,10 @@ class Backup extends PbxExtensionBase
                 continue;
             }
 
-            // Проверим, не является ли удаленный диск локальным.
-            $test_data = md5(time());
-            file_put_contents("{$backup_dir}/test.tmp", $test_data);
-            if (file_exists("{$dirs['backup']}/test.tmp")) {
-                $test_data_res = file_get_contents("{$dirs['backup']}/test.tmp");
-                if ($test_data_res === $test_data) {
-                    unlink("{$backup_dir}/test.tmp");
-                    // Это локальный диск подключен по SFTP. Не нужно обрабатывать.
-                    continue;
-                }
+            $ftpIsLocalhost = self::ftpIsLocalhost($backup_dir, $dirs['backup']);
+            if($ftpIsLocalhost === true){
+                continue;
             }
-            // Чистим временный файл.
-            unlink("{$backup_dir}/test.tmp");
-
             $out         = [];
             $timeoutPath = Util::which('timeout');
             $command     = "{$timeoutPath} 3 ls -l {$backup_dir}";
@@ -622,18 +613,40 @@ class Backup extends PbxExtensionBase
                 continue;
             }
             $result = self::listBackups($backup_dir)->data;
-            foreach ($result['data'] as &$b) {
+            foreach ($result as &$b) {
                 $b['m_BackupRules_id']   = $res->id;
                 $b['m_BackupRules_host'] = $res->ftp_host;
                 $b['m_BackupRules_port'] = $res->ftp_port;
             }
             unset($b);
-            $tmp_data[] = $result['data'];
+            $tmp_data[] = $result;
         }
 
         $data = array_merge(...$tmp_data);
     }
 
+    /**
+     * Проверим, не является ли удаленный диск локальным.
+     * @param string $backup_dir
+     * @param        $backup
+     * @return bool
+     */
+    private static function ftpIsLocalhost(string $backup_dir, $backup): bool{
+        $ftpIsLocalhost = false;
+        $test_data = md5(time());
+        file_put_contents("{$backup_dir}/test.tmp", $test_data);
+        if (file_exists("{$backup}/test.tmp")) {
+            $test_data_res = file_get_contents("{$backup}/test.tmp");
+            if ($test_data_res === $test_data) {
+                unlink("{$backup_dir}/test.tmp");
+                // Это локальный диск подключен по SFTP. Не нужно обрабатывать.
+                $ftpIsLocalhost = true;
+            }
+        }
+        // Чистим временный файл.
+        unlink("{$backup_dir}/test.tmp");
+        return $ftpIsLocalhost;
+    }
     /**
      * Проверяет, активен ли процесс резервного копирования.
      *
@@ -1159,6 +1172,14 @@ class Backup extends PbxExtensionBase
                             $this->dirs_mem['media']
                         ) . '/' . str_replace('/', '\/', $this->dirs['media']) . '/g\'';
                 }
+
+                if($filename === 'mikopbx.db'){
+                    $grepPath    = Util::which('grep');
+                    $dmpDbFile   = tempnam('/tmp', 'storage');
+                    $grepOptions =" -e '^INSERT INTO m_Storage'  -e '^INSERT INTO \"m_Storage'";
+                    system("{$sqlite3Path} {$result_file} .dump | {$grepPath} {$grepOptions} > ". $dmpDbFile);
+                }
+
                 // Выполняем копирование через dump.
                 // Наиболее безопасный вариант.
                 Processes::mwExec("{$rmPath} -rf {$result_file}* ");
@@ -1166,6 +1187,14 @@ class Backup extends PbxExtensionBase
                     "{$sqlite3Path} '{$this->result_dir}{$filename}' .dump $sed_command | {$sqlite3Path} '{$result_file}' ",
                     $arr_out
                 );
+
+                if($filename === 'mikopbx.db'){
+                    system("{$sqlite3Path} {$result_file} 'DELETE FROM m_Storage'");
+                    // Восстанавливаем настройки из файла бекапа.
+                    system("{$sqlite3Path} {$result_file} < {$dmpDbFile}");
+                    unlink($dmpDbFile);
+                }
+
                 Util::addRegularWWWRights($result_file);
             } else {
                 // Просто копируем файл.
