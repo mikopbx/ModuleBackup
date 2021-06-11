@@ -48,6 +48,9 @@ class ModuleBackupController extends BaseController
         $semanticCollectionCSS = $this->assets->collection('SemanticUICSS');
         $semanticCollectionCSS->addCss('css/vendor/semantic/progress.min.css', true);
 
+        $headerCollectionCSS = $this->assets->collection('headerCSS');
+        $headerCollectionCSS->addCss("css/cache/{$this->moduleUniqueID}/module-backup.css", true);
+
         $semanticCollectionJS = $this->assets->collection('SemanticUIJS');
         $semanticCollectionJS->addJs('js/vendor/semantic/progress.min.js', true);
 
