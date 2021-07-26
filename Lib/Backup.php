@@ -38,7 +38,7 @@ class Backup extends PbxExtensionBase
             'backup'           => self::getBackupDir(),
             'custom_modules'   => $this->config->path('core.modulesDir'),
             'media'            => $this->config->path('asterisk.mediadir'),
-            'astspoolpath'     => $this->config->path('asterisk.astspoolpath'),
+            'astspooldir'      => $this->config->path('asterisk.astspooldir'),
             'settings_db_path' => $this->config->path('database.dbfile'),
             'cdr_db_path'      => $this->config->path('cdrDatabase.dbfile'),
             'tmp'              => $this->config->path('core.tempDir'),
@@ -113,7 +113,7 @@ class Backup extends PbxExtensionBase
         $path2dirs['dbpath']         = '/etc/asterisk/db'; // Замена на $dirsConfig->path('astDatabase.dbfile')
         $path2dirs['astlogpath']     = '/var/asterisk/log'; // Замена на $dirsConfig->path('asterisk.astlogdir')
         $path2dirs['media']          = '/var/asterisk/spool/media';
-        $path2dirs['astspoolpath']   = '/var/asterisk/spool'; // Замена на $dirsConfig->path('asterisk.astspooldir')
+        $path2dirs['astspooldir']    = '/var/asterisk/spool'; // Замена на $dirsConfig->path('asterisk.astspooldir')
         $path2dirs['backup']         = '/var/asterisk/backup';
         $path2dirs['tmp']            = '/ultmp';
         $path2dirs['custom_modules'] = '/var/asterisk/custom_modules';
@@ -894,7 +894,7 @@ class Backup extends PbxExtensionBase
             }
         }
         if (($this->options['backup-records'] ?? '') === '1') {
-            Processes::mwExec("{$findPath} {$this->dirs['astspoolpath']} -type f -name *.mp3", $out);
+            Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name *.mp3", $out);
             foreach ($out as $filename) {
                 $flist .= 'backup-records:' . $filename . "\n";
             }
@@ -1007,12 +1007,12 @@ class Backup extends PbxExtensionBase
             'backup'           => self::getBackupDir(),
             'custom_modules'   => $dirsConfig->path('core.modulesDir'),
             'media'            => $dirsConfig->path('asterisk.mediadir'),
-            'astspoolpath'     => $dirsConfig->path('asterisk.astspoolpath'),
+            'astspooldir'      => $dirsConfig->path('asterisk.astspooldir'),
             'settings_db_path' => $dirsConfig->path('database.dbfile'),
             'cdr_db_path'      => $dirsConfig->path('cdrDatabase.dbfile'),
         ];
         $arr_size['backup-sound-files'] = Util::getSizeOfFile($dirs['media']);
-        $arr_size['backup-records']     = Util::getSizeOfFile($dirs['astspoolpath']);
+        $arr_size['backup-records']     = Util::getSizeOfFile($dirs['astspooldir']);
         $arr_size['backup-cdr']         = Util::getSizeOfFile($dirs['cdr_db_path']);
 
         $backup_config             = Util::getSizeOfFile($dirs['settings_db_path']);
@@ -1128,7 +1128,7 @@ class Backup extends PbxExtensionBase
 
         $result_file     = $filename;
         $tmp_path        = '/var/asterisk/';
-        $mem_monitor_dir = $this->dirs_mem['astspoolpath'] . '/mikopbx/voicemailarchive/monitor';
+        $mem_monitor_dir = $this->dirs_mem['astspooldir'] . '/mikopbx/voicemailarchive/monitor';
         $monitor_dir     = Storage::getMonitorDir();
         if (strpos($filename, $tmp_path) === 0) {
             $var_search  = [
