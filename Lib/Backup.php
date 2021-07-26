@@ -146,6 +146,7 @@ class Backup extends PbxExtensionBase
         $di                = Di::getDefault();
         $uploadDir        = $di->getShared('config')->path('www.uploadDir');
         $data['dir_name']  = str_ireplace($uploadDir.'/', '', dirname($data['temp_file']));
+        $data['dir_name']  = str_ireplace('img', '', $data['dir_name']);
         $data['extension'] = Util::getExtensionOfFile(basename($data['temp_file']));
         $data['res_file']  = $backupDir . '/' . $data['dir_name'].'/resultfile.'.$data['extension'];
         $data['mnt_point'] = $backupDir . '/' . $data['dir_name'] . '/mnt_point';
@@ -518,14 +519,14 @@ class Backup extends PbxExtensionBase
                 // Получим данные по прогрессу и количеству файлов.
                 $file_data   = file_get_contents($file_progress);
                 $data        = explode('/', $file_data);
-                $progress    = (count($data) > 0 && is_numeric($data[0])) ? trim($data[0]) * 1 : 0;
+                $progress    = (!empty($data) && is_numeric($data[0])) ? trim($data[0]) * 1 : 0;
                 $total       = (count($data) > 1 && is_numeric($data[1])) ? trim($data[1]) * 1 : 0;
                 $config_file = "{$dirs['backup']}/{$base_filename}/config.json";
 
                 if (file_exists("{$dirs['backup']}/{$base_filename}/progress_recover.txt")) {
                     $file_data        = file_get_contents("{$dirs['backup']}/{$base_filename}/progress_recover.txt");
                     $data             = explode('/', $file_data);
-                    $progress_recover = (count($data) > 0) ? trim($data[0]) * 1 : 0;
+                    $progress_recover = (!empty($data)) ? trim($data[0]) * 1 : 0;
                     if ($total === 0) {
                         $total = (count($data) > 1) ? trim($data[1]) * 1 : 0;
                     }
@@ -540,7 +541,7 @@ class Backup extends PbxExtensionBase
                 // Вычислим timestamp.
                 $arr_fname        = explode('_', $base_filename);
                 $res->data[] = [
-                    'date'             => $arr_fname[1] ?? time(),
+                    'date'             => preg_replace("/[^0-9+]/", '', $arr_fname[1]) ?? time(),
                     'size'             => $size,
                     'progress'         => $progress,
                     'total'            => $total,
