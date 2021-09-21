@@ -18,18 +18,19 @@ use Phalcon\Di;
 class Backup extends PbxExtensionBase
 {
     private $id;
-    private $dirs;
-    private $dirs_mem;
-    private $file_list;
-    private $result_file;
-    private $result_dir;
-    private $progress_file;
-    private $progress_file_recover;
-    private $config_file;
-    private $options;
-    private $options_recover_file;
-    private $progress = 0;
-    private $type = 'img'; // img | zip
+    private array $dirs;
+    private array $dirs_mem;
+    private string $file_list;
+    private string $errorFile;
+    private string $result_file;
+    private string $result_dir;
+    private string $progress_file;
+    private string $progress_file_recover;
+    private string $config_file;
+    private array $options;
+    private string $options_recover_file;
+    private int $progress = 0;
+    private string $type = 'img'; // img | zip
 
     public function __construct($id, $options = null)
     {
@@ -38,7 +39,7 @@ class Backup extends PbxExtensionBase
             'backup'           => self::getBackupDir(),
             'custom_modules'   => $this->config->path('core.modulesDir'),
             'media'            => $this->config->path('asterisk.mediadir'),
-            'astspoolpath'     => $this->config->path('asterisk.astspoolpath'),
+            'astspooldir'      => $this->config->path('asterisk.astspooldir'),
             'settings_db_path' => $this->config->path('database.dbfile'),
             'cdr_db_path'      => $this->config->path('cdrDatabase.dbfile'),
             'tmp'              => $this->config->path('core.tempDir'),
@@ -75,6 +76,7 @@ class Backup extends PbxExtensionBase
         $this->result_file           = "{$this->dirs['backup']}/{$this->id}/resultfile.{$this->type}";
         $this->result_dir            = "{$this->dirs['backup']}/{$this->id}/mnt_point";
         $this->progress_file         = "{$this->dirs['backup']}/{$this->id}/progress.txt";
+        $this->errorFile             = "{$this->dirs['backup']}/{$this->id}/error.txt";
         $this->config_file           = "{$this->dirs['backup']}/{$this->id}/config.json";
         $this->options_recover_file  = "{$this->dirs['backup']}/{$this->id}/options_recover.json";
         $this->progress_file_recover = "{$this->dirs['backup']}/{$this->id}/progress_recover.txt";
@@ -113,7 +115,7 @@ class Backup extends PbxExtensionBase
         $path2dirs['dbpath']         = '/etc/asterisk/db'; // Замена на $dirsConfig->path('astDatabase.dbfile')
         $path2dirs['astlogpath']     = '/var/asterisk/log'; // Замена на $dirsConfig->path('asterisk.astlogdir')
         $path2dirs['media']          = '/var/asterisk/spool/media';
-        $path2dirs['astspoolpath']   = '/var/asterisk/spool'; // Замена на $dirsConfig->path('asterisk.astspooldir')
+        $path2dirs['astspooldir']    = '/var/asterisk/spool'; // Замена на $dirsConfig->path('asterisk.astspooldir')
         $path2dirs['backup']         = '/var/asterisk/backup';
         $path2dirs['tmp']            = '/ultmp';
         $path2dirs['custom_modules'] = '/var/asterisk/custom_modules';
@@ -146,6 +148,7 @@ class Backup extends PbxExtensionBase
         $di                = Di::getDefault();
         $uploadDir        = $di->getShared('config')->path('www.uploadDir');
         $data['dir_name']  = str_ireplace($uploadDir.'/', '', dirname($data['temp_file']));
+        $data['dir_name']  = str_ireplace('img', '', $data['dir_name']);
         $data['extension'] = Util::getExtensionOfFile(basename($data['temp_file']));
         $data['res_file']  = $backupDir . '/' . $data['dir_name'].'/resultfile.'.$data['extension'];
         $data['mnt_point'] = $backupDir . '/' . $data['dir_name'] . '/mnt_point';
@@ -437,7 +440,7 @@ class Backup extends PbxExtensionBase
             $b_dirs[] = $b_dir;
         }
         $list = self::listBackups()->data;
-        foreach ($list['data'] as $backup_data) {
+        foreach ($list as $backup_data) {
             if ($id === $backup_data['id'] && isset($backup_data['config']['backup'])) {
                 $b_dir = $backup_data['config']['backup'] . "/{$id}";
                 if (file_exists($b_dir)) {
@@ -473,7 +476,7 @@ class Backup extends PbxExtensionBase
      *
      * @return PBXApiResult
      */
-    public static function listBackups($backup_dir = ''): PBXApiResult
+    public static function listBackups(string $backup_dir = ''): PBXApiResult
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
@@ -518,14 +521,14 @@ class Backup extends PbxExtensionBase
                 // Получим данные по прогрессу и количеству файлов.
                 $file_data   = file_get_contents($file_progress);
                 $data        = explode('/', $file_data);
-                $progress    = (count($data) > 0 && is_numeric($data[0])) ? trim($data[0]) * 1 : 0;
+                $progress    = (!empty($data) && is_numeric($data[0])) ? trim($data[0]) * 1 : 0;
                 $total       = (count($data) > 1 && is_numeric($data[1])) ? trim($data[1]) * 1 : 0;
                 $config_file = "{$dirs['backup']}/{$base_filename}/config.json";
 
                 if (file_exists("{$dirs['backup']}/{$base_filename}/progress_recover.txt")) {
                     $file_data        = file_get_contents("{$dirs['backup']}/{$base_filename}/progress_recover.txt");
                     $data             = explode('/', $file_data);
-                    $progress_recover = (count($data) > 0) ? trim($data[0]) * 1 : 0;
+                    $progress_recover = (!empty($data)) ? trim($data[0]) * 1 : 0;
                     if ($total === 0) {
                         $total = (count($data) > 1) ? trim($data[1]) * 1 : 0;
                     }
@@ -539,8 +542,8 @@ class Backup extends PbxExtensionBase
                 }
                 // Вычислим timestamp.
                 $arr_fname        = explode('_', $base_filename);
-                $res->data[] = [
-                    'date'             => $arr_fname[1] ?? time(),
+                $data = [
+                    'date'             => preg_replace("/[^0-9+]/", '', $arr_fname[1]) ?? time(),
                     'size'             => $size,
                     'progress'         => $progress,
                     'total'            => $total,
@@ -549,8 +552,15 @@ class Backup extends PbxExtensionBase
                     'id'               => $base_filename,
                     'progress_recover' => $progress_recover,
                     'pid_recover'      => $pid_recover,
-                    'test'             => 'TEST',
                 ];
+                $errorMsgFile = "{$dirs['backup']}/{$base_filename}/error.txt";
+                if(file_exists($errorMsgFile)){
+                    $errorMsg = file_get_contents($errorMsgFile);
+                    if(!empty($errorMsg)){
+                        $data['error'] = $errorMsg;
+                    }
+                }
+                $res->data[] = $data;
             }
         }
         $res->success = true;
@@ -797,31 +807,82 @@ class Backup extends PbxExtensionBase
     }
 
     /**
+     * Проверка хватает ли свободноо места на диске;
+     * @return bool
+     */
+    private function checkDiskSpace():bool
+    {
+        $estimatedSize = self::getEstimatedSize();
+        $needSpace = 0;
+        $freeSpace = 0;
+        foreach ($this->options as $key => $data){
+            if($data !== '1'){
+                continue;
+            }
+            $needSpace += 1 * $estimatedSize->getResult()['data'][$key];
+        }
+
+        $storage = new Storage();
+        $freeSpaceData = $storage->getAllHdd();
+
+        $mountPoint = '';
+        Storage::isStorageDiskMounted('', $mountPoint);
+        foreach ($freeSpaceData as $storageData){
+            if($storageData['mounted'] === $mountPoint){
+                $freeSpace =  1*$storageData['free_space'];
+            }
+        }
+
+        return ($freeSpace > $needSpace && ($freeSpace - $needSpace) > 500);
+    }
+
+    /**
      * Создает файл бекапа.
      *
      * @return array
      */
     public function createArchive(): array
     {
-        if ( ! file_exists("{$this->dirs['backup']}/{$this->id}")) {
-            return ['result' => 'ERROR', 'message' => 'Unable to create directory for the backup.'];
-        }
-        $result = $this->createFileList();
-        if ( ! $result) {
-            return ['result' => 'ERROR', 'message' => 'Unable to create file list. Failed to create file.'];
-        }
-
+        file_put_contents($this->errorFile, '');
         if (file_exists($this->progress_file)) {
             $file_data      = file_get_contents($this->progress_file);
             $data           = explode('/', $file_data);
             $this->progress = trim($data[0]) * 1;
+        }else{
+            file_put_contents($this->progress_file, '0');
         }
+        if(!$this->checkDiskSpace()){
+            $msg = 'There is not enough free disk space.';
+            file_put_contents($this->errorFile, $msg);
+            Util::sysLogMsg(__CLASS__, $msg);
+            return ['result' => 'ERROR', 'message' => $msg];
+        }
+        if ( ! file_exists("{$this->dirs['backup']}/{$this->id}")) {
+            $msg = 'Unable to create directory for the backup.';
+            file_put_contents($this->errorFile, $msg);
+            Util::sysLogMsg(__CLASS__, $msg);
+            return ['result' => 'ERROR', 'message' => $msg];
+        }
+        $result = $this->createFileList();
+        if ( ! $result) {
+            $msg = 'Unable to create file list. Failed to create file.';
+            file_put_contents($this->errorFile, $msg);
+            Util::sysLogMsg(__CLASS__, $msg);
+            return ['result' => 'ERROR', 'message' => $msg];
+        }
+
         if ( ! file_exists($this->file_list)) {
-            return ['result' => 'ERROR', 'message' => 'File list not found.'];
+            $msg = 'File list not found.';
+            file_put_contents($this->errorFile, $msg);
+            Util::sysLogMsg(__CLASS__, $msg);
+            return ['result' => 'ERROR', 'message' => $msg];
         }
         $lines = file($this->file_list);
         if ($lines === false) {
-            return ['result' => 'ERROR', 'message' => 'File list not found.'];
+            $msg = 'File list empty.';
+            file_put_contents($this->errorFile, $msg);
+            Util::sysLogMsg(__CLASS__, $msg);
+            return ['result' => 'ERROR', 'message' => $msg];
         }
         $count_files = count($lines);
         file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
@@ -893,7 +954,7 @@ class Backup extends PbxExtensionBase
             }
         }
         if (($this->options['backup-records'] ?? '') === '1') {
-            Processes::mwExec("{$findPath} {$this->dirs['astspoolpath']} -type f -name *.mp3", $out);
+            Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name *.mp3", $out);
             foreach ($out as $filename) {
                 $flist .= 'backup-records:' . $filename . "\n";
             }
@@ -1006,12 +1067,12 @@ class Backup extends PbxExtensionBase
             'backup'           => self::getBackupDir(),
             'custom_modules'   => $dirsConfig->path('core.modulesDir'),
             'media'            => $dirsConfig->path('asterisk.mediadir'),
-            'astspoolpath'     => $dirsConfig->path('asterisk.astspoolpath'),
+            'astspooldir'      => $dirsConfig->path('asterisk.astspooldir'),
             'settings_db_path' => $dirsConfig->path('database.dbfile'),
             'cdr_db_path'      => $dirsConfig->path('cdrDatabase.dbfile'),
         ];
         $arr_size['backup-sound-files'] = Util::getSizeOfFile($dirs['media']);
-        $arr_size['backup-records']     = Util::getSizeOfFile($dirs['astspoolpath']);
+        $arr_size['backup-records']     = Util::getSizeOfFile($dirs['astspooldir']);
         $arr_size['backup-cdr']         = Util::getSizeOfFile($dirs['cdr_db_path']);
 
         $backup_config             = Util::getSizeOfFile($dirs['settings_db_path']);
@@ -1127,7 +1188,7 @@ class Backup extends PbxExtensionBase
 
         $result_file     = $filename;
         $tmp_path        = '/var/asterisk/';
-        $mem_monitor_dir = $this->dirs_mem['astspoolpath'] . '/mikopbx/voicemailarchive/monitor';
+        $mem_monitor_dir = $this->dirs_mem['astspooldir'] . '/mikopbx/voicemailarchive/monitor';
         $monitor_dir     = Storage::getMonitorDir();
         if (strpos($filename, $tmp_path) === 0) {
             $var_search  = [
@@ -1262,13 +1323,13 @@ class Backup extends PbxExtensionBase
      *
      * @return \MikoPBX\PBXCoreREST\Lib\PBXApiResult
      */
-    public static function statusUpload():PBXApiResult
+    public static function statusUpload($id):PBXApiResult
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
-        if (isset($data['backup_id'])) {
+        if (isset($id)) {
             $backup_dir  = Backup::getBackupDir();
-            $status_file = "{$backup_dir}/{$data['backup_id']}/upload_status";
+            $status_file = "{$backup_dir}/{$id}/upload_status";
         } else {
             $status_file = '';
         }
@@ -1285,31 +1346,3 @@ class Backup extends PbxExtensionBase
     }
 
 }
-
-
-// if ($file_data['action'] === 'convertConfig') {
-//     $settings = $file_data['data'];
-//     $res_file = "{$settings['backupdir']}/{$settings['dir_name']}/resultfile.{$settings['extension']}";
-//
-//     if ( ! file_exists($res_file) && file_exists($settings['temp_dir'])) {
-//         Util::mergeFilesInDirectory(
-//             $settings['temp_dir'],
-//             $settings['resumableFilename'],
-//             $settings['resumableTotalChunks'],
-//             $res_file
-//         );
-//     }
-//
-//     $res = file_exists($res_file);
-//     if ($res !== true) {
-//         file_put_contents("{$settings['backupdir']}/{$settings['dir_name']}/upload_status", 'ERROR');
-//         exit(1);
-//     }
-//     try {
-//         $result = System::convertConfig($res_file);
-//         $status = 'COMPLETE';
-//     } catch (Exception $e) {
-//         $status = 'ERROR';
-//     }
-//     file_put_contents("{$settings['backupdir']}/{$settings['dir_name']}/upload_status", $status);
-// }

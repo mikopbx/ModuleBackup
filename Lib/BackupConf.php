@@ -89,7 +89,7 @@ class BackupConf extends ConfigClass
         } elseif ('getEstimatedSize' === $action) {
             $res = Backup::getEstimatedSize();
         } elseif ('statusUpload' === $action) {
-            $res = Backup::statusUpload();
+            $res = Backup::statusUpload($data['id']);
         } elseif ('recover' === $action) {
             $options = $data['options'] ?? null;
             $res  = Backup::startRecover($data['id'], $options);
