@@ -9,11 +9,12 @@
 namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Common\Models\{Extensions, ExternalPhones, NetworkFilters};
-include_once __DIR__.'/vendor/autoload.php';
 
 use MikoPBX\Core\System\Network;
 use MikoPBX\Core\System\Verify;
 use simplehtmldom\HtmlDocument;
+
+include_once __DIR__.'/../vendor/autoload.php';
 
 class OldConfigConverter
 {

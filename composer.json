@@ -2,7 +2,7 @@
     "name": "mikopbx/modulebackup",
     "description": "ModuleBackup",
     "require": {
-        "mikopbx/core": ">=2020.2.757"
+        "simplehtmldom/simplehtmldom": "dev-master"
     },
     "autoload": {
         "psr-4": {

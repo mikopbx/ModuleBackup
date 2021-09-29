@@ -2,21 +2,21 @@
     'root' => array(
         'pretty_version' => 'dev-develop',
         'version' => 'dev-develop',
-        'type' => 'library',
+        'type' => 'application',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'c301fbe82b6851a599686d3940a5edb65d6e3807',
-        'name' => '__root__',
+        'reference' => '70bb9362b8e00836bd685382c02a9effbab1c4e6',
+        'name' => 'mikopbx/modulebackup',
         'dev' => true,
     ),
     'versions' => array(
-        '__root__' => array(
+        'mikopbx/modulebackup' => array(
             'pretty_version' => 'dev-develop',
             'version' => 'dev-develop',
-            'type' => 'library',
+            'type' => 'application',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'c301fbe82b6851a599686d3940a5edb65d6e3807',
+            'reference' => '70bb9362b8e00836bd685382c02a9effbab1c4e6',
             'dev_requirement' => false,
         ),
         'simplehtmldom/simplehtmldom' => array(
