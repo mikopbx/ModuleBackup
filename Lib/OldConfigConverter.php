@@ -9,21 +9,17 @@
 namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Common\Models\{Extensions, ExternalPhones, NetworkFilters};
+include_once __DIR__.'/vendor/autoload.php';
 
-
-/**
- * $cntr = new OldConfigConverter('/root/config.xml');
- * $cntr->parse();
- * $cntr->makeConfig();
- */
-
-require_once 'simple_html_dom.php';
+use MikoPBX\Core\System\Network;
+use MikoPBX\Core\System\Verify;
+use simplehtmldom\HtmlDocument;
 
 class OldConfigConverter
 {
-    private $res_html;
-    private $data;
-    private $tmp_data;
+    private HtmlDocument $resHtml;
+    private array $data;
+    private array $tmp_data;
 
     /**
      * OldConfigConverter constructor.
@@ -32,8 +28,8 @@ class OldConfigConverter
      */
     public function __construct($filename)
     {
-        $text_xml       = file_get_contents($filename);
-        $this->res_html = str_get_html($text_xml);
+        $client = new HtmlDocument();
+        $this->resHtml = $client->load(file_get_contents($filename));
         $this->data     = [
             'm_Users'                     => [],
             'm_Sip'                       => [],
@@ -60,7 +56,7 @@ class OldConfigConverter
      */
     public function parse()
     {
-        if ($this->res_html) {
+        if ($this->resHtml) {
             $this->parseSipPhones();
             $this->parseExternalPhone();
             $this->parseManager();
@@ -79,10 +75,10 @@ class OldConfigConverter
      */
     private function parseSipPhones(): void
     {
-        if (is_bool($this->res_html)) {
+        if (is_bool($this->resHtml)) {
             return;
         }
-        $sip_phone_nodes = $this->res_html->find('sip phone');
+        $sip_phone_nodes = $this->resHtml->find('sip phone');
         if (is_bool($sip_phone_nodes)) {
             return;
         }
@@ -204,14 +200,12 @@ class OldConfigConverter
     {
         $this->tmp_data = [];
         foreach ($children as $child) {
-            if (count($child->nodes) > 0) {
-                if ('read-permission' == $child->tag) {
-                    $this->tmp_data[$child->tag][] = $child->nodes[0]->__toString();
-                } elseif ('write-permission' == $child->tag) {
-                    $this->tmp_data[$child->tag][] = $child->nodes[0]->__toString();
-                } else {
-                    $this->tmp_data[$child->tag] = $child->nodes[0]->__toString();
-                }
+            if ('read-permission' === $child->tag) {
+                $this->tmp_data[$child->tag][] = $child->plaintext;
+            } elseif ('write-permission' === $child->tag) {
+                $this->tmp_data[$child->tag][] = $child->plaintext;
+            } else {
+                $this->tmp_data[$child->tag] = $child->plaintext;
             }
         }
     }
@@ -281,7 +275,8 @@ class OldConfigConverter
      */
     private function parseExternalPhone(): void
     {
-        foreach ($this->res_html->find('external phone') as $e) {
+        $externals = $this->resHtml->find('external phone');
+        foreach ($externals as $e) {
             $this->initData($e->children);
 
             $userid                      = null;
@@ -343,7 +338,8 @@ class OldConfigConverter
      */
     private function parseManager(): void
     {
-        foreach ($this->res_html->find('services manager manager-user') as $e) {
+        $managers = $this->resHtml->find('services manager manager-user');
+        foreach ($managers as $e) {
             $this->initData($e->children);
             if ($this->get('username') != null) {
                 $rules         = 'rule_AMI';
@@ -386,7 +382,7 @@ class OldConfigConverter
                     $manager["{$key}_write"] = 'on';
                 }
                 foreach ($keys as $key) {
-                    if ($manager["{$key}_read"] == 'on' && $manager["{$key}_write"] == 'on') {
+                    if ($manager["{$key}_read"] === 'on' && $manager["{$key}_write"] === 'on') {
                         $manager["{$key}_main"] = 'on';
                     }
                 }
@@ -401,7 +397,8 @@ class OldConfigConverter
      */
     private function parseSipProviders(): void
     {
-        foreach ($this->res_html->find('sip provider') as $e) {
+        $providers = $this->resHtml->find('sip provider');
+        foreach ($providers as $e) {
             $this->initData($e->children);
             if ($this->get('uniqid') == null) {
                 continue;
@@ -447,7 +444,8 @@ class OldConfigConverter
      */
     private function parseIaxProviders(): void
     {
-        foreach ($this->res_html->find('iax provider') as $e) {
+        $provider = $this->resHtml->find('iax provider');
+        foreach ($provider as $e) {
             $this->initData($e->children);
             if ($this->get('uniqid') == null) {
                 continue;
@@ -484,7 +482,8 @@ class OldConfigConverter
      */
     private function parseSmartIvr(): void
     {
-        foreach ($this->res_html->find('miko_1c smartivr') as $e) {
+        $ivrs = $this->resHtml->find('miko_1c smartivr');
+        foreach ($ivrs as $e) {
             $this->initData($e->children);
             $exten = '000063';
             foreach ($this->data['extensions'] as $key => $value) {
@@ -510,7 +509,7 @@ class OldConfigConverter
      */
     private function parseSaasKey(): void
     {
-        foreach ($this->res_html->find('saaskey') as $e) {
+        foreach ($this->resHtml->find('saaskey') as $e) {
             $this->data['saas_key'] = $e->text();
         }
     }
@@ -520,7 +519,8 @@ class OldConfigConverter
      */
     private function parseCallFlow(): void
     {
-        foreach ($this->res_html->find('cfe callflow') as $e) {
+        $callflows = $this->resHtml->find('cfe callflow');
+        foreach ($callflows as $e) {
             $this->initData($e->children);
             if ($this->get('data') == null) {
                 continue;
@@ -542,9 +542,9 @@ class OldConfigConverter
         $tmp_queues  = [];
         $tmp_members = [];
         foreach ($data['containers'] as $key => $value) {
-            if ('Queue' == $value['title']) {
+            if ('Queue' === $value['title']) {
                 $tmp_queues[$key] = $value;
-            } elseif ('QueueMember' == $value['title']) {
+            } elseif ('QueueMember' === $value['title']) {
                 $tmp_members[$key] = $value;
             }
         }
@@ -559,14 +559,14 @@ class OldConfigConverter
             if ( ! isset($queues[$src]['description'])) {
                 $queues[$src]['members']                      = [];
                 $queues[$src]['name']                         = $this->get('name');
-                $queues[$src]['recive_calls_while_on_a_call'] = ($tmp_queues[$src]["dataContainer"]["checkbox3"] == "y") ? 'false' : 'on';
+                $queues[$src]['recive_calls_while_on_a_call'] = ($tmp_queues[$src]["dataContainer"]["checkbox3"] === "y") ? 'false' : 'on';
                 $queues[$src]['strategy']                     = $tmp_queues[$src]["dataContainer"]["list2"];
                 $queues[$src]['caller_hear']                  = "moh";
                 $queues[$src]['description']                  = "from old config Askozia";
-                $queues[$src]['announce_hold_time']           = ($tmp_queues[$src]["dataContainer"]["checkbox6"] == "y") ? 'on' : 'false';
-                $queues[$src]['announce_position']            = ($tmp_queues[$src]["dataContainer"]["checkbox7"] == "y") ? 'on' : 'false';
+                $queues[$src]['announce_hold_time']           = ($tmp_queues[$src]["dataContainer"]["checkbox6"] === "y") ? 'on' : 'false';
+                $queues[$src]['announce_position']            = ($tmp_queues[$src]["dataContainer"]["checkbox7"] === "y") ? 'on' : 'false';
 
-                $queues[$src]['periodic_announce_frequency']      = ($tmp_queues[$src]["dataContainer"]["number5"] == "0") ? '30' : $tmp_queues[$src]["dataContainer"]["number5"];
+                $queues[$src]['periodic_announce_frequency']      = ($tmp_queues[$src]["dataContainer"]["number5"] === "0") ? '30' : $tmp_queues[$src]["dataContainer"]["number5"];
                 $queues[$src]['periodic_announce_sound_id']       = '';
                 $queues[$src]['timeout_to_redirect_to_extension'] = '';
                 $queues[$src]['timeout_extension']                = '';
@@ -578,7 +578,7 @@ class OldConfigConverter
 
             $id_user = $tmp_members[$tgt]['dataContainer']['list1'];
             foreach ($this->data['extensions'] as $exten) {
-                if ($exten['sip_uniqid'] == $id_user) {
+                if ($exten['sip_uniqid'] === $id_user) {
                     $queues[$src]['members'][] = [
                         'number'   => $exten['number'],
                         'priority' => count($queues[$src]['members']),
@@ -588,7 +588,7 @@ class OldConfigConverter
             }
 
             foreach ($this->data['m_ExternalPhones'] as $exten) {
-                if ($exten['uniqid'] == $id_user) {
+                if ($exten['uniqid'] === $id_user) {
                     $queues[$src]['members'][] = [
                         'number'   => $exten['extension'],
                         'priority' => count($queues[$src]['members']),
@@ -600,7 +600,7 @@ class OldConfigConverter
 
         foreach ($queues as $key => $q) {
             $q['members'] = json_encode($q['members'], JSON_UNESCAPED_SLASHES);
-            if (count($queues) == 1) {
+            if (count($queues) === 1) {
                 $q['extension'] = $this->get('number');
             } else {
                 $q['extension'] = '100' . $key . '0' . $this->get('number');
