@@ -146,7 +146,7 @@ class Backup extends PbxExtensionBase
         }
         $backupDir         = self::getBackupDir();
         $di                = Di::getDefault();
-        $uploadDir        = $di->getShared('config')->path('www.uploadDir');
+        $uploadDir         = $di->getShared('config')->path('www.uploadDir');
         $data['dir_name']  = str_ireplace($uploadDir.'/', '', dirname($data['temp_file']));
         $data['dir_name']  = str_ireplace('img', '', $data['dir_name']);
         $data['extension'] = Util::getExtensionOfFile(basename($data['temp_file']));
@@ -156,9 +156,7 @@ class Backup extends PbxExtensionBase
 
         $mvPath = Util::which('mv');
         Processes::mwExec("{$mvPath} {$data['temp_file']} {$data['res_file']}");
-
         $res->data['id']        = $data['dir_name'];
-
         $res->success = true;
         if ($data['extension'] === 'img') {
             $mountPath = Util::which('mount');
@@ -171,89 +169,103 @@ class Backup extends PbxExtensionBase
                 return $res;
             }
 
-            // Если бекап выполнялся в каталоге оперативной памяти:
-            $path_b_dir = "{$data['mnt_point']}/var/asterisk/backup/{$data['dir_name']}";
-            if ( ! file_exists($path_b_dir)) {
-                // Бекап выполнялся на диск - хранилище
-                $path_b_dir = "{$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/{$data['dir_name']}";
-            }
-            $duPath      = Util::which('du');
-            $busyboxPath = Util::which('busybox');
-            $awkPath     = Util::which('awk');
+            self::unpackImgBackup($res, $backupDir, $data);
+        } elseif ($data['extension'] === 'zip') {
+            self::unpackZipBackup($backupDir, $data);
+        } elseif ($data['extension'] === 'xml'){
+            $converter = new OldConfigConverter($data['res_file']);
+            $converter->parse();
+            $converter->makeConfig();
+        }
+        return $res;
+    }
+
+    public static function unpackImgBackup($res, $backupDir, $data):PBXApiResult
+    {
+        // Если бекап выполнялся в каталоге оперативной памяти:
+        $path_b_dir = "{$data['mnt_point']}/var/asterisk/backup/{$data['dir_name']}";
+        if ( ! file_exists($path_b_dir)) {
+            // Бекап выполнялся на диск - хранилище
+            $path_b_dir = "{$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/{$data['dir_name']}";
+        }
+        $duPath      = Util::which('du');
+        $busyboxPath = Util::which('busybox');
+        $awkPath     = Util::which('awk');
+        Processes::mwExec(
+            "{$duPath} {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+            $out
+        );
+        if (($out[0] ?? false) && file_exists($out[0])) {
+            // бекап выполнялся на сетевой диск.
+            $path_b_dir = dirname($out[0]);
+        }
+
+        if ( ! file_exists($path_b_dir)) {
             Processes::mwExec(
-                "{$duPath} {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+                "{$duPath} {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
                 $out
             );
             if (($out[0] ?? false) && file_exists($out[0])) {
                 // бекап выполнялся на сетевой диск.
                 $path_b_dir = dirname($out[0]);
-            }
-
-            if ( ! file_exists($path_b_dir)) {
-                Processes::mwExec(
-                    "{$duPath} {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
-                    $out
-                );
-                if (($out[0] ?? false) && file_exists($out[0])) {
-                    // бекап выполнялся на сетевой диск.
-                    $path_b_dir = dirname($out[0]);
-                    $new_id     = basename($path_b_dir);
-                    if ($data['dir_name'] !== $new_id) {
-                        $result['new_id'] = $new_id;
-                    }
+                $new_id     = basename($path_b_dir);
+                if ($data['dir_name'] !== $new_id) {
+                    $result['new_id'] = $new_id;
                 }
             }
-            $cpPath = Util::which('cp');
-            $resMwExec    = Processes::mwExec("{$cpPath} {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
+        }
+        $cpPath = Util::which('cp');
+        $resMwExec    = Processes::mwExec("{$cpPath} {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
 
-            $umountPath = Util::which('umount');
-            Processes::mwExec("{$umountPath} {$data['res_file']}");
-            if (isset($res->data['new_id'])) {
-                $mvPath           = Util::which('mv');
-                $resMwExec              = Processes::mwExec(
-                    "{$mvPath} {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
-                );
-                $data['dir_name'] = $res->data['new_id'];
-            }
-            if ($resMwExec !== 0) {
-                $res->success = false;
-                $message = 'Fail mount cp data from loop device...';
-                $res->messages[]=$message;
-                Util::sysLogMsg('Backup_unpack_conf_img', $message);
-            }
+        $umountPath = Util::which('umount');
+        Processes::mwExec("{$umountPath} {$data['res_file']}");
+        if (isset($res->data['new_id'])) {
+            $mvPath           = Util::which('mv');
+            $resMwExec              = Processes::mwExec(
+                "{$mvPath} {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
+            );
+            $data['dir_name'] = $res->data['new_id'];
+        }
+        if ($resMwExec !== 0) {
+            $res->success = false;
+            $message = 'Fail mount cp data from loop device...';
+            $res->messages[]=$message;
+            Util::sysLogMsg('Backup_unpack_conf_img', $message);
+        }
 
-            if ( ! file_exists("{$backupDir}/{$data['dir_name']}/flist.txt") ||
-                ! file_exists("{$backupDir}/{$data['dir_name']}/config.json")) {
-                $res->success = false;
-                $message = 'Broken backup file';
-                $res->messages[]=$message;
-                Util::sysLogMsg('Backup_unpack_conf_img', $message);
-            }
-            if (!$res->success) {
-                unlink($data['res_file']);
-            }
-        } elseif ($data['extension'] === 'zip') {
-            file_put_contents("{$backupDir}/{$data['dir_name']}/progress.txt", '0');
-
-            self::staticExtractFile(
-                $data['dir_name'],
-                $data['res_file'],
-                "{$backupDir}/{$data['dir_name']}/flist.txt"
-            );
-            self::staticExtractFile(
-                $data['dir_name'],
-                $data['res_file'],
-                "{$backupDir}/{$data['dir_name']}/progress.txt"
-            );
-            self::staticExtractFile(
-                $data['dir_name'],
-                $data['res_file'],
-                "{$backupDir}/{$data['dir_name']}/config.json"
-            );
+        if ( ! file_exists("{$backupDir}/{$data['dir_name']}/flist.txt") ||
+            ! file_exists("{$backupDir}/{$data['dir_name']}/config.json")) {
+            $res->success = false;
+            $message = 'Broken backup file';
+            $res->messages[]=$message;
+            Util::sysLogMsg('Backup_unpack_conf_img', $message);
+        }
+        if (!$res->success) {
+            unlink($data['res_file']);
         }
 
         return $res;
     }
+
+    public static function unpackZipBackup($backupDir, $data):void
+    {
+        file_put_contents("{$backupDir}/{$data['dir_name']}/progress.txt", '0');
+
+        self::staticExtractFile(
+            $data['dir_name'],
+            $data['res_file'],
+            "{$backupDir}/{$data['dir_name']}/flist.txt"
+        );
+        self::staticExtractFile(
+            $data['dir_name'],
+            $data['res_file'],
+            "{$backupDir}/{$data['dir_name']}/progress.txt"
+        );
+        self::staticExtractFile(
+            $data['dir_name'],
+            $data['res_file'],
+            "{$backupDir}/{$data['dir_name']}/config.json"
+        );    }
 
     /**
      * Возвращает полный путь к директории с резервными копиями.
