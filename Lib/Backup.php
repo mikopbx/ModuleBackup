@@ -30,7 +30,12 @@ class Backup extends PbxExtensionBase
     private array $options;
     private string $options_recover_file;
     private int $progress = 0;
-    private string $type = 'img'; // img | zip
+    private string $type = 'img'; // img | z
+
+    public const DB_FILES = [
+        'mikopbx.db',
+        'cdr.db'
+    ];
 
     public function __construct($id, $options = null)
     {
@@ -991,23 +996,26 @@ class Backup extends PbxExtensionBase
         $cpPath      = Util::which('cp');
         $sevenZaPath = Util::which('7za');
 
+        $isDbFile = in_array(basename($filename), self::DB_FILES);
+
         if ($this->type === 'img') {
             $this->createImgFile();
             $res_dir = dirname($this->result_dir . $filename);
             Util::mwMkdir($res_dir);
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if ($isDbFile) {
                 // Выполняем копирование через dump.
                 // Наиболее безопасный вариант.
-                Processes::mwExec(
-                    "{$sqlite3Path} '{$filename}' .dump | {$sqlite3Path} '{$this->result_dir}{$filename}' ",
-                    $out
-                );
+                Processes::mwExec("{$sqlite3Path} '{$filename}' .dump | {$sqlite3Path} '{$this->result_dir}{$filename}' ",$out);
             } else {
                 // Просто копируем файл.
                 Processes::mwExec("{$cpPath} '{$filename}' '{$this->result_dir}{$filename}' ", $out);
             }
         } else {
-            Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$filename}'", $out);
+            $compressMode = '';
+            if($isDbFile){
+                $compressMode = '-mx=0';
+            }
+            Processes::mwExec("{$sevenZaPath} a $compressMode -tzip -spf '{$this->result_file}' '{$filename}'", $out);
         }
     }
 
@@ -1227,7 +1235,7 @@ class Backup extends PbxExtensionBase
             if ( ! Storage::diskIsMounted($this->result_file, '')) {
                 Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
             }
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if (in_array(basename($filename), self::DB_FILES)) {
                 $sed_command = '';
                 if ($result_file !== $filename) {
                     $sed_command = ' | ' . $sedPath . ' \'s/' . str_replace(
@@ -1278,7 +1286,7 @@ class Backup extends PbxExtensionBase
             if ($filename !== $result_file && file_exists($filename)) {
                 Processes::mwExec("{$mvPath} '{$filename}' '{$result_file}'", $arr_out);
             }
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if (in_array(basename($filename), self::DB_FILES)) {
                 Util::addRegularWWWRights($result_file);
             }
         }
