@@ -1,17 +1,19 @@
 <?php
 return [
+    'bkp_ErrorOnDownloadBackup' => 'Não foi possível encontrar o arquivo de backup',
     'bkp_CreateBackupAfterSaveSettings' => 'Comece a fazer uma cópia imediatamente após salvar as configurações',
     'bkp_UploadInProgress' => 'Carregando um arquivo para o PBX',
     'bkp_UploadProcessingFiles' => 'Processamento de arquivo',
     'bkp_UploadComplete' => 'Processamento concluído',
     'bkp_Restore' => 'OK',
-    'bkp_Cancel' => 'Cancelar',
+    'bkp_Cancel' => 'Cancelamento',
     'bkp_RestoreBackupConformation' => 'O procedimento de restauração é irreversível, se você habilitou a opção de configurações de restauração, a estação será reinicializada automaticamente!',
     'bkp_RestoreBackupTitle' => 'Recuperando de uma cópia de arquivo',
     'bkp_CreateBackupHeader' => 'O que você precisa para arquivar?',
     'bkp_RestoreBackupHeader' => 'O que precisa ser restaurado?',
     'bkp_DeleteFiles' => 'Excluir arquivo de backup',
     'bkp_StopCreateBackup' => 'Cancelar backup',
+    'bkp_UploadError' => 'Falha ao carregar arquivo de backup',
     'bkp_SettingsRestoredWaitReboot' => 'As configurações são restauradas, a estação está reiniciando ...',
     'bkp_RestoreError' => 'Falha ao restaurar arquivo',
     'bkp_NoBackupRecordsAvailable' => 'Nenhuma cópia de segurança disponível',
@@ -25,7 +27,7 @@ return [
     'bkp_SFTPMode' => 'Modo SFTP',
     'bkp_FTPPath' => 'Caminho do servidor',
     'bkp_FTPSecret' => 'Senha',
-    'bkp_FTPUsername' => 'Nome de usuário',
+    'bkp_FTPUsername' => 'Nome do usuário',
     'bkp_FTPPort' => 'Porta',
     'bkp_FTPHost' => 'Endereço do servidor',
     'bkp_EveryDay' => 'Diário',
@@ -45,6 +47,7 @@ return [
     'BreadcrumbModuleBackupautomatic' => 'Programação de arquivamento',
     'BreadcrumbModuleBackuprestore' => 'Restaurar do arquivo',
     'BreadcrumbModuleBackupcreate' => 'Cópia de segurança',
+    'SubHeaderModuleBackup' => 'Copiar para FTP / SFTP em uma programação, recuperação de ZIP, IMG',
     /**
  * Copyright (C) MIKO LLC - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited
@@ -53,7 +56,4 @@ return [
  *
  */
     'BreadcrumbModuleBackup' => 'Módulo de backup',
-    'bkp_ErrorOnDownloadBackup' => 'Não foi possível encontrar o arquivo de backup',
-    'bkp_UploadError' => 'Falha ao carregar arquivo de backup',
-    'SubHeaderModuleBackup' => 'Copiar para FTP / SFTP em uma programação, recuperação de ZIP, IMG',
 ];
