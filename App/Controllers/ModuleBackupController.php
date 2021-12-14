@@ -207,7 +207,6 @@ class ModuleBackupController extends BaseController
                 case 'what_backup':
                     break;
                 case 'enabled':
-                case 'ftp_sftp_mode':
                     if (array_key_exists($name, $data)) {
                         $rule->$name = ($data[$name] === 'on') ? 1 : 0;
                     } else {

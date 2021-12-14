@@ -468,7 +468,7 @@ class Backup extends PbxExtensionBase
 
         $BackupRules = BackupRules::find('enabled="1"');
         foreach ($BackupRules as $res) {
-            $b_dir = '/storage/' . $res->ftp_host . '.' . $res->ftp_port . "/{$id}";
+            $b_dir = self::getMountPath($res)."/{$id}";
             if (file_exists($b_dir)) {
                 $b_dirs[] = $b_dir;
             }
@@ -596,36 +596,14 @@ class Backup extends PbxExtensionBase
         ];
 
         $tmp_data = [$data];
-
         $BackupRules = BackupRules::find('enabled="1"');
         foreach ($BackupRules as $res) {
-            $backup_dir   = '/storage/' . $res->ftp_host . '.' . $res->ftp_port;
-            $disk_mounted = Storage::isStorageDiskMounted($backup_dir);
-            if ( ! $disk_mounted) {
-                if ($res->ftp_sftp_mode === '1') {
-                    $disk_mounted = Storage::mountSftpDisk(
-                        $res->ftp_host,
-                        $res->ftp_port,
-                        $res->ftp_username,
-                        $res->ftp_secret,
-                        $res->ftp_path,
-                        $backup_dir
-                    );
-                } else {
-                    $disk_mounted = Storage::mountFtp(
-                        $res->ftp_host,
-                        $res->ftp_port,
-                        $res->ftp_username,
-                        $res->ftp_secret,
-                        $res->ftp_path,
-                        $backup_dir
-                    );
-                }
-            }
-            if ( ! $disk_mounted) {
+            $result     = self::checkStorageFtp($res->id);
+            if(!$result->success){
                 continue;
             }
 
+            $backup_dir = self::getMountPath($res);
             $ftpIsLocalhost = self::ftpIsLocalhost($backup_dir, $dirs['backup']);
             if($ftpIsLocalhost === true){
                 continue;
@@ -712,6 +690,11 @@ class Backup extends PbxExtensionBase
         return $res;
     }
 
+    public static function getMountPath(BackupRules $res):string
+    {
+        return '/storage/'.md5("$res->ftp_host.$res->ftp_port");
+    }
+
     /**
      * Проверка возможности подключения диска.
      *
@@ -728,13 +711,21 @@ class Backup extends PbxExtensionBase
             $res->messages[]='Backup rule not found for id='.$id;
             return $res;
         }
-        $backup_dir = '/storage/' . $first_by_id->ftp_host . '.' . $first_by_id->ftp_port;
+        $backup_dir = self::getMountPath($first_by_id);
         /** @var Storage::isStorageDiskMounted $disk_mounted */
         $disk_mounted       = Storage::isStorageDiskMounted("$backup_dir ");
-        $disk_mounted_start = $disk_mounted;
-        if ( ! $disk_mounted) {
+        if ( !$disk_mounted) {
             if ($first_by_id->ftp_sftp_mode === '1') {
                 $disk_mounted = Storage::mountSftpDisk(
+                    $first_by_id->ftp_host,
+                    $first_by_id->ftp_port,
+                    $first_by_id->ftp_username,
+                    $first_by_id->ftp_secret,
+                    $first_by_id->ftp_path,
+                    $backup_dir
+                );
+            } elseif ($first_by_id->ftp_sftp_mode === '3') {
+                $disk_mounted = Storage::mountWebDav(
                     $first_by_id->ftp_host,
                     $first_by_id->ftp_port,
                     $first_by_id->ftp_username,
@@ -758,10 +749,6 @@ class Backup extends PbxExtensionBase
             return $res;
         }
         $res->success = true;
-        if ( ! $disk_mounted_start) {
-            Storage::umountDisk($backup_dir);
-        }
-
         return $res;
     }
 
@@ -809,7 +796,7 @@ class Backup extends PbxExtensionBase
         if ( ! file_exists($this->result_file)) {
             $BackupRules = BackupRules::find('enabled="1"');
             foreach ($BackupRules as $res) {
-                $backup_dir = '/storage/' . $res->ftp_host . '.' . $res->ftp_port;
+                $backup_dir = self::getMountPath($res);
                 $filename   = "{$backup_dir}/{$this->id}/resultfile";
                 if (file_exists("{$filename}.zip")) {
                     $this->result_file = "{$filename}.zip";

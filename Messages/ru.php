@@ -56,5 +56,6 @@ return [
     'bkp_UploadProcessingFiles'         => 'Обработка файла',
     'bkp_UploadInProgress'              => 'Загрузка файла на АТС',
     'bkp_CreateBackupAfterSaveSettings' => 'Начать создание копии сразу после сохранения настроек',
-    'bkp_ErrorOnDownloadBackup'      => 'Не удалось найти файл бекапа',
+    'bkp_ErrorOnDownloadBackup'         => 'Не удалось найти файл бекапа',
+    'bkp_Mode'                          => 'Протокол',
 ];

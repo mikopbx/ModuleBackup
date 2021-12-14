@@ -52,6 +52,25 @@ class ModuleBackupAutomaticForm extends Form
                     $this->add($action);
                     break;
                 case 'ftp_sftp_mode':
+                    // Library
+                    $arrConnType = [
+                        '1' => $this->translation->_('bkp_SFTP_MODE'),
+                        '0' => $this->translation->_('bkp_FTP_MODE'),
+                        '3' => $this->translation->_('bkp_WebDav_MODE'),
+                    ];
+                    $library = new Select(
+                        $key, $arrConnType, [
+                                        'using'    => [
+                                            'id',
+                                            'name',
+                                        ],
+                                        'useEmpty' => false,
+                                        'value'    => $entity->$key,
+                                        'class'    => 'ui selection dropdown library-type-select',
+                                    ]
+                    );
+                    $this->add($library);
+                    break;
                 case 'enabled':
                     $cheskarr = ['value' => null];
                     if ($entity->$key === "1") {

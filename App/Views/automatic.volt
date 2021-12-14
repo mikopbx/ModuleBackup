@@ -20,11 +20,9 @@
                 <div class="field">
                     {{ form.render('ftp_port') }}
                 </div>
-                <div class="field">
-                    <div class="ui toggle checkbox" id="sftp-toggle">
-                        {{ form.render('ftp_sftp_mode') }}
-                        <label>{{ t._('bkp_SFTPMode') }}</label>
-                    </div>
+                <div class="ten wide field">
+                    <label>{{ t._('bkp_Mode') }}</label>
+                    {{ form.render('ftp_sftp_mode') }}
                 </div>
             </div>
         </div>

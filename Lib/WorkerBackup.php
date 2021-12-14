@@ -32,64 +32,42 @@ class WorkerBackup extends WorkerBase
             $b->createArchive();
         } elseif (count($argv) === 4) {
             $PID = Processes::getPidOfProcess("{$argv[1]} {$argv[2]} {$argv[3]}", '' . getmypid() . ' ');
-            if (empty($PID)) {
-                // Другого процесса с аналогичными установками не запущено.
-                $res = BackupRules::findFirstById($argv[3]);
-                if ($res && Util::isJson($res->what_backup)) {
-                    $backup_dir   = '/storage/' . $res->ftp_host . '.' . $res->ftp_port;
-                    $disk_mounted = Storage::isStorageDiskMounted("$backup_dir ");
-                    if ( ! $disk_mounted) {
-                        if ($res->ftp_sftp_mode === '1') {
-                            $disk_mounted = Storage::mountSftpDisk(
-                                $res->ftp_host,
-                                $res->ftp_port,
-                                $res->ftp_username,
-                                $res->ftp_secret,
-                                $res->ftp_path,
-                                $backup_dir
-                            );
-                        } else {
-                            $disk_mounted = Storage::mountFtp(
-                                $res->ftp_host,
-                                $res->ftp_port,
-                                $res->ftp_username,
-                                $res->ftp_secret,
-                                $res->ftp_path,
-                                $backup_dir
-                            );
-                        }
-                    }
-                    if ( ! $disk_mounted) {
-                        Util::sysLogMsg('Backup', 'Failed to mount backup disk...', LOG_ERR);
-                        return;
-                    }
-
-                    // Удаляем старые резервные копии, если необходимо.
-                    if ($res->keep_older_versions > 0) {
-                        $out      = [];
-                        $findPath = Util::which('find');
-                        $sortPath = Util::which('sort');
-                        $rmPath   = Util::which('rm');
-                        Processes::mwExec("{$findPath} {$backup_dir} -mindepth 1 -maxdepth 1 -type d  | {$sortPath}", $out);
-                        if (count($out) >= $res->keep_older_versions) {
-                            $count_dir = count($out) - $res->keep_older_versions;
-                            while ($count_dir >= 0){
-                                Processes::mwExec("{$rmPath} -rf {$out[$count_dir]}");
-                                $count_dir--;
-                            }
-                        }
-                    }
-
-                    // Запускаем резервное копирование.
-                    $id                = 'backup_' . time();
-                    $options           = json_decode($res->what_backup, true);
-                    $options['backup'] = $backup_dir;
-                    if ($res->ftp_sftp_mode !== '1') {
-                        $options['type'] = 'zip';
-                    }
-                    $b = new Backup($id, $options);
-                    $b->createArchive();
+            if (!empty($PID)) {
+                return;
+            }
+            // Другого процесса с аналогичными установками не запущено.
+            $res = BackupRules::findFirstById($argv[3]);
+            if ($res && Util::isJson($res->what_backup)) {
+                $resultMount  = Backup::checkStorageFtp($res->id);
+                if (!$resultMount->success) {
+                    Util::sysLogMsg('Backup', 'Failed to mount backup disk...', LOG_ERR);
+                    return;
                 }
+                $backup_dir   = Backup::getMountPath($res);
+                // Удаляем старые резервные копии, если необходимо.
+                if ($res->keep_older_versions > 0) {
+                    $out      = [];
+                    $findPath = Util::which('find');
+                    $sortPath = Util::which('sort');
+                    $rmPath   = Util::which('rm');
+                    Processes::mwExec("{$findPath} {$backup_dir} -mindepth 1 -maxdepth 1 -type d  | {$sortPath}", $out);
+                    if (count($out) >= $res->keep_older_versions) {
+                        $count_dir = count($out) - $res->keep_older_versions;
+                        while ($count_dir >= 0){
+                            Processes::mwExec("{$rmPath} -rf {$out[$count_dir]}");
+                            $count_dir--;
+                        }
+                    }
+                }
+                // Запускаем резервное копирование.
+                $id                = 'backup_' . time();
+                $options           = json_decode($res->what_backup, true);
+                $options['backup'] = $backup_dir;
+                if ($res->ftp_sftp_mode !== '1' && $res->ftp_sftp_mode !== '3') {
+                    $options['type'] = 'zip';
+                }
+                $b = new Backup($id, $options);
+                $b->createArchive();
             }
         }
     }

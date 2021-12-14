@@ -74,6 +74,7 @@ const automaticBackup = {
 		automaticBackup.$sftpTgl.checkbox({
 			onChange: automaticBackup.onSftpToggleChange,
 		});
+		$('#ftp_sftp_mode').dropdown();
 		automaticBackup.initializeForm();
 	},
 
