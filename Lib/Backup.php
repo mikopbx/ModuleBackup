@@ -727,7 +727,6 @@ class Backup extends PbxExtensionBase
             } elseif ($first_by_id->ftp_sftp_mode === '3') {
                 $disk_mounted = Storage::mountWebDav(
                     $first_by_id->ftp_host,
-                    $first_by_id->ftp_port,
                     $first_by_id->ftp_username,
                     $first_by_id->ftp_secret,
                     $first_by_id->ftp_path,
