@@ -30,7 +30,12 @@ class Backup extends PbxExtensionBase
     private array $options;
     private string $options_recover_file;
     private int $progress = 0;
-    private string $type = 'img'; // img | zip
+    private string $type = 'img'; // img | z
+
+    public const DB_FILES = [
+        'mikopbx.db',
+        'cdr.db'
+    ];
 
     public function __construct($id, $options = null)
     {
@@ -463,7 +468,7 @@ class Backup extends PbxExtensionBase
 
         $BackupRules = BackupRules::find('enabled="1"');
         foreach ($BackupRules as $res) {
-            $b_dir = '/storage/' . $res->ftp_host . '.' . $res->ftp_port . "/{$id}";
+            $b_dir = self::getMountPath($res)."/{$id}";
             if (file_exists($b_dir)) {
                 $b_dirs[] = $b_dir;
             }
@@ -591,36 +596,14 @@ class Backup extends PbxExtensionBase
         ];
 
         $tmp_data = [$data];
-
         $BackupRules = BackupRules::find('enabled="1"');
         foreach ($BackupRules as $res) {
-            $backup_dir   = '/storage/' . $res->ftp_host . '.' . $res->ftp_port;
-            $disk_mounted = Storage::isStorageDiskMounted($backup_dir);
-            if ( ! $disk_mounted) {
-                if ($res->ftp_sftp_mode === '1') {
-                    $disk_mounted = Storage::mountSftpDisk(
-                        $res->ftp_host,
-                        $res->ftp_port,
-                        $res->ftp_username,
-                        $res->ftp_secret,
-                        $res->ftp_path,
-                        $backup_dir
-                    );
-                } else {
-                    $disk_mounted = Storage::mountFtp(
-                        $res->ftp_host,
-                        $res->ftp_port,
-                        $res->ftp_username,
-                        $res->ftp_secret,
-                        $res->ftp_path,
-                        $backup_dir
-                    );
-                }
-            }
-            if ( ! $disk_mounted) {
+            $result     = self::checkStorageFtp($res->id);
+            if(!$result->success){
                 continue;
             }
 
+            $backup_dir = self::getMountPath($res);
             $ftpIsLocalhost = self::ftpIsLocalhost($backup_dir, $dirs['backup']);
             if($ftpIsLocalhost === true){
                 continue;
@@ -707,6 +690,11 @@ class Backup extends PbxExtensionBase
         return $res;
     }
 
+    public static function getMountPath(BackupRules $res):string
+    {
+        return '/storage/'.md5("$res->ftp_host.$res->ftp_port");
+    }
+
     /**
      * Проверка возможности подключения диска.
      *
@@ -723,15 +711,22 @@ class Backup extends PbxExtensionBase
             $res->messages[]='Backup rule not found for id='.$id;
             return $res;
         }
-        $backup_dir = '/storage/' . $first_by_id->ftp_host . '.' . $first_by_id->ftp_port;
+        $backup_dir = self::getMountPath($first_by_id);
         /** @var Storage::isStorageDiskMounted $disk_mounted */
         $disk_mounted       = Storage::isStorageDiskMounted("$backup_dir ");
-        $disk_mounted_start = $disk_mounted;
-        if ( ! $disk_mounted) {
+        if ( !$disk_mounted) {
             if ($first_by_id->ftp_sftp_mode === '1') {
                 $disk_mounted = Storage::mountSftpDisk(
                     $first_by_id->ftp_host,
                     $first_by_id->ftp_port,
+                    $first_by_id->ftp_username,
+                    $first_by_id->ftp_secret,
+                    $first_by_id->ftp_path,
+                    $backup_dir
+                );
+            } elseif ($first_by_id->ftp_sftp_mode === '3') {
+                $disk_mounted = Storage::mountWebDav(
+                    $first_by_id->ftp_host,
                     $first_by_id->ftp_username,
                     $first_by_id->ftp_secret,
                     $first_by_id->ftp_path,
@@ -753,10 +748,6 @@ class Backup extends PbxExtensionBase
             return $res;
         }
         $res->success = true;
-        if ( ! $disk_mounted_start) {
-            Storage::umountDisk($backup_dir);
-        }
-
         return $res;
     }
 
@@ -804,7 +795,7 @@ class Backup extends PbxExtensionBase
         if ( ! file_exists($this->result_file)) {
             $BackupRules = BackupRules::find('enabled="1"');
             foreach ($BackupRules as $res) {
-                $backup_dir = '/storage/' . $res->ftp_host . '.' . $res->ftp_port;
+                $backup_dir = self::getMountPath($res);
                 $filename   = "{$backup_dir}/{$this->id}/resultfile";
                 if (file_exists("{$filename}.zip")) {
                     $this->result_file = "{$filename}.zip";
@@ -991,23 +982,26 @@ class Backup extends PbxExtensionBase
         $cpPath      = Util::which('cp');
         $sevenZaPath = Util::which('7za');
 
+        $isDbFile = in_array(basename($filename), self::DB_FILES);
+
         if ($this->type === 'img') {
             $this->createImgFile();
             $res_dir = dirname($this->result_dir . $filename);
             Util::mwMkdir($res_dir);
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if ($isDbFile) {
                 // Выполняем копирование через dump.
                 // Наиболее безопасный вариант.
-                Processes::mwExec(
-                    "{$sqlite3Path} '{$filename}' .dump | {$sqlite3Path} '{$this->result_dir}{$filename}' ",
-                    $out
-                );
+                Processes::mwExec("{$sqlite3Path} '{$filename}' .dump | {$sqlite3Path} '{$this->result_dir}{$filename}' ",$out);
             } else {
                 // Просто копируем файл.
                 Processes::mwExec("{$cpPath} '{$filename}' '{$this->result_dir}{$filename}' ", $out);
             }
         } else {
-            Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$filename}'", $out);
+            $compressMode = '';
+            if($isDbFile){
+                $compressMode = '-mx=0';
+            }
+            Processes::mwExec("{$sevenZaPath} a $compressMode -tzip -spf '{$this->result_file}' '{$filename}'", $out);
         }
     }
 
@@ -1227,7 +1221,7 @@ class Backup extends PbxExtensionBase
             if ( ! Storage::diskIsMounted($this->result_file, '')) {
                 Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
             }
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if (in_array(basename($filename), self::DB_FILES)) {
                 $sed_command = '';
                 if ($result_file !== $filename) {
                     $sed_command = ' | ' . $sedPath . ' \'s/' . str_replace(
@@ -1278,7 +1272,7 @@ class Backup extends PbxExtensionBase
             if ($filename !== $result_file && file_exists($filename)) {
                 Processes::mwExec("{$mvPath} '{$filename}' '{$result_file}'", $arr_out);
             }
-            if (in_array(basename($filename), ['mikopbx.db', 'cdr.db'])) {
+            if (in_array(basename($filename), self::DB_FILES)) {
                 Util::addRegularWWWRights($result_file);
             }
         }

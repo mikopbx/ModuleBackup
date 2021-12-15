@@ -9,32 +9,28 @@
 </div>
 <div class="two fields disability">
     <div class="field">
-        <div class="ten wide field">
-            <label>{{ t._('bkp_FTPHost') }}</label>
+        <div class="sixteen wide field">
+            <label> {{ t._('bkp_FTPHost') }}</label>
             {{ form.render('ftp_host') }}
         </div>
-
+        <br>
         <div class="sixteen wide field">
-            <label>{{ t._('bkp_FTPPort') }}</label>
             <div class="inline fields">
                 <div class="field">
-                    {{ form.render('ftp_port') }}
+                    <label>{{ t._('bkp_Mode') }}</label>
+                    {{ form.render('ftp_sftp_mode') }}
                 </div>
-                <div class="field">
-                    <div class="ui toggle checkbox" id="sftp-toggle">
-                        {{ form.render('ftp_sftp_mode') }}
-                        <label>{{ t._('bkp_SFTPMode') }}</label>
-                    </div>
+                <div class="five wide field">
+                    <label>{{ t._('bkp_FTPPort') }}</label>
+                    {{ form.render('ftp_port') }}
                 </div>
             </div>
         </div>
-
-        <div class="ten wide field">
+        <div class="sixteen wide field">
             <label>{{ t._('bkp_FTPUsername') }}</label>
             {{ form.render('ftp_username') }}
         </div>
-
-        <div class="ten wide field">
+        <div class="sixteen wide field">
             <label>{{ t._('bkp_FTPSecret') }}</label>
             {{ form.render('ftp_secret') }}
         </div>
@@ -43,7 +39,6 @@
             <label>{{ t._('bkp_FTPPath') }}</label>
             {{ form.render('ftp_path') }}
         </div>
-
     </div>
     <div class="field">
         <div class="field">

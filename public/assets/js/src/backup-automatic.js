@@ -12,10 +12,10 @@ const automaticBackup = {
 	$timeStart: $('#time-start'),
 	$everySelect: $('#every'),
 	$enableTgl: $('#enable-disable-toggle'),
-	$sftpTgl: $('#sftp-toggle'),
 	$ftpPort: $('#ftp_port'),
 	$formObj: $('#backup-automatic-form'),
 	$createNowTgl: $('#create-now'),
+	$ftpMode: $('#ftp_sftp_mode'),
 	validateRules: {
 		ftp_host: {
 			identifier: 'ftp_host',
@@ -71,10 +71,25 @@ const automaticBackup = {
 			onChange: automaticBackup.onEnableToggleChange,
 			fireOnInit: true,
 		});
-		automaticBackup.$sftpTgl.checkbox({
-			onChange: automaticBackup.onSftpToggleChange,
+		automaticBackup.$ftpMode.dropdown({
+			onChange: automaticBackup.onChangeMode
 		});
 		automaticBackup.initializeForm();
+
+		automaticBackup.onChangeMode();
+	},
+
+	onChangeMode(){
+		let val = automaticBackup.$ftpMode.val();
+		if (val === '1') {
+			automaticBackup.$ftpPort.parent().show();
+			automaticBackup.$ftpPort.val('22');
+		}else if(val === '3'){
+			automaticBackup.$ftpPort.parent().hide();
+		} else {
+			automaticBackup.$ftpPort.parent().show();
+			automaticBackup.$ftpPort.val('21');
+		}
 	},
 
 	onEnableToggleChange() {
@@ -82,13 +97,6 @@ const automaticBackup = {
 			$('.disability').addClass('disabled');
 		} else {
 			$('.disability').removeClass('disabled');
-		}
-	},
-	onSftpToggleChange() {
-		if (automaticBackup.$sftpTgl.checkbox('is checked')) {
-			automaticBackup.$ftpPort.val('22');
-		} else {
-			automaticBackup.$ftpPort.val('21');
 		}
 	},
 	cbBeforeSendForm(settings) {
