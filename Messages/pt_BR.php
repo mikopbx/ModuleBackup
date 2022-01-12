@@ -56,4 +56,5 @@ return [
  *
  */
     'BreadcrumbModuleBackup' => 'Módulo de backup',
+    'bkp_Mode' => 'Modo',
 ];
