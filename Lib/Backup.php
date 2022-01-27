@@ -31,9 +31,11 @@ class Backup extends PbxExtensionBase
     private string $options_recover_file;
     private int $progress = 0;
     private string $type = 'img'; // img | z
+    private bool $remote = false;
 
+    public const CONF_DB_NAME = 'mikopbx.db';
     public const DB_FILES = [
-        'mikopbx.db',
+        self::CONF_DB_NAME,
         'cdr.db'
     ];
 
@@ -62,9 +64,10 @@ class Backup extends PbxExtensionBase
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
             $this->dirs['backup'] = dirname($out[0], 2);
-        } elseif (is_array($options) && isset($options['backup'])) {
+        } elseif (isset($options['backup'])) {
             // Переопределяем каталог с бекапом.
             $this->dirs['backup'] = $options['backup'];
+            $this->remote = true;
         }
         $this->id = $id;
         $b_dir    = "{$this->dirs['backup']}/{$this->id}";
@@ -88,7 +91,7 @@ class Backup extends PbxExtensionBase
 
         if (( ! is_array($options) || $options === null) && file_exists($this->config_file)) {
             $this->options = json_decode(file_get_contents($this->config_file), true);
-        } else {
+        } elseif( is_array($options)) {
             $this->options = $options;
         }
 
@@ -151,6 +154,10 @@ class Backup extends PbxExtensionBase
         }
         $backupDir         = self::getBackupDir();
         $di                = Di::getDefault();
+        if($di === null){
+            $res->messages[] = "Can not create DI.";
+            return $res;
+        }
         $uploadDir         = $di->getShared('config')->path('www.uploadDir');
         $data['dir_name']  = str_ireplace($uploadDir.'/', '', dirname($data['temp_file']));
         $data['dir_name']  = str_ireplace('img', '', $data['dir_name']);
@@ -824,19 +831,30 @@ class Backup extends PbxExtensionBase
             }
             $needSpace += 1 * $estimatedSize->getResult()['data'][$key];
         }
-
-        $storage = new Storage();
-        $freeSpaceData = $storage->getAllHdd();
-
-        $mountPoint = '';
-        Storage::isStorageDiskMounted('', $mountPoint);
-        foreach ($freeSpaceData as $storageData){
-            if($storageData['mounted'] === $mountPoint){
-                $freeSpace =  1*$storageData['free_space'];
+        if($this->remote === true){
+            // Это резервное копирование на удаленнный сервер.
+            $freeSpace = $this->getFreeSpaceOnMountPoint($this->dirs['backup']);
+        }else{
+            // Резервное копирование на локальный диск.
+            $storage = new Storage();
+            $freeSpaceData = $storage->getAllHdd();
+            $mountPoint = '';
+            Storage::isStorageDiskMounted('', $mountPoint);
+            foreach ($freeSpaceData as $storageData){
+                if($storageData['mounted'] === $mountPoint){
+                    $freeSpace =  1*$storageData['free_space'];
+                }
             }
         }
 
         return ($freeSpace > $needSpace && ($freeSpace - $needSpace) > 500);
+    }
+
+    private function getFreeSpaceOnMountPoint($mountPoint):string{
+        $pathDf = Util::which('df');
+        $pathGrep = Util::which('grep');
+        $pathAwk = Util::which('awk');
+        return 1*shell_exec("$pathDf -m -a -P | $pathGrep $mountPoint | $pathAwk '{print $4}'");
     }
 
     /**
@@ -1240,7 +1258,7 @@ class Backup extends PbxExtensionBase
                         ) . '/' . str_replace('/', '\/', $this->dirs['media']) . '/g\'';
                 }
 
-                if($filename === 'mikopbx.db'){
+                if($filename === self::CONF_DB_NAME){
                     $grepPath    = Util::which('grep');
                     $dmpDbFile   = tempnam('/tmp', 'storage');
                     $grepOptions =" -e '^INSERT INTO m_Storage'  -e '^INSERT INTO \"m_Storage'";
@@ -1255,7 +1273,7 @@ class Backup extends PbxExtensionBase
                     $arr_out
                 );
 
-                if($filename === 'mikopbx.db'){
+                if($filename === self::CONF_DB_NAME){
                     system("{$sqlite3Path} {$result_file} 'DELETE FROM m_Storage'");
                     // Восстанавливаем настройки из файла бекапа.
                     system("{$sqlite3Path} {$result_file} < {$dmpDbFile}");
