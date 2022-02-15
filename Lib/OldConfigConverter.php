@@ -64,6 +64,24 @@ class OldConfigConverter
         $resultSip = '<sip>'.PHP_EOL;
         $resultExternal = '<external>'.PHP_EOL;
         $rows   = explode(PHP_EOL, $doc);
+
+        $this->makeXmlFromCsvMain($rows, $resultSip, $resultExternal);
+        $this->makeXmlFromCsvFreePBX($rows, $resultSip);
+
+        $resultSip.= '</sip>'.PHP_EOL;
+        $resultExternal.= '</external>'.PHP_EOL;
+        return "$resultSip $resultExternal";
+    }
+
+    /**
+     * Преобразование csv в xml
+     * @param array  $rows
+     * @param string $resultSip
+     * @param string $resultExternal
+     * @return void
+     */
+    private function makeXmlFromCsvMain(array $rows, string &$resultSip, string &$resultExternal):void
+    {
         foreach ($rows as $row){
             $columns = explode(';', $row);
             if($columns<3){
@@ -75,9 +93,9 @@ class OldConfigConverter
             $uid = strtoupper('SIP-PHONE-IMPORT-' . $columns[0]);
             $resultSip.='    <phone>'.PHP_EOL;
             $resultSip.='	    <extension>'.$columns[0].'</extension>'.PHP_EOL.
-                        '	    <callerid>'.$columns[1].'</callerid>'.PHP_EOL.
-                        '	    <uniqid>'.$uid.'</uniqid>'.PHP_EOL.
-                        '	    <secret>'.$columns[2].'</secret>'.PHP_EOL;
+                '	    <callerid>'.$columns[1].'</callerid>'.PHP_EOL.
+                '	    <uniqid>'.$uid.'</uniqid>'.PHP_EOL.
+                '	    <secret>'.$columns[2].'</secret>'.PHP_EOL;
 
             if(isset($columns[3])){
                 $resultExternal.= '    <phone>'.PHP_EOL;
@@ -98,10 +116,42 @@ class OldConfigConverter
             }
             $resultSip.='    </phone>'.PHP_EOL;
         }
+    }
 
-        $resultSip.= '</sip>'.PHP_EOL;
-        $resultExternal.= '</external>'.PHP_EOL;
-        return "$resultSip $resultExternal";
+    /**
+     * Преобразование csv в xml
+     * @param array  $rows
+     * @param string $resultSip
+     * @return void
+     */
+    private function makeXmlFromCsvFreePBX(array $rows, string &$resultSip):void
+    {
+        $indexes = [];
+        foreach ($rows as $index => $row){
+            $columns = explode(',', $row);
+            if($index === 0){
+                $indexes = array_flip($columns);
+                if( !isset($indexes['extension'],$indexes['secret'],$indexes['name']) ){
+                    return;
+                }
+                continue;
+            }
+
+            if($columns<3){
+                continue;
+            }
+            if(!is_numeric($columns[0])){
+                continue;
+            }
+            $uid = strtoupper('SIP-PHONE-IMPORT-' . $columns[0]);
+            $resultSip.='    <phone>'.PHP_EOL;
+            $resultSip.='	    <extension>'.$columns[$indexes['extension']].'</extension>'.PHP_EOL.
+                '	    <callerid>'.str_replace('"','',$columns[$indexes['name']]).'</callerid>'.PHP_EOL.
+                '	    <uniqid>'.$uid.'</uniqid>'.PHP_EOL.
+                '	    <secret>'.$columns[$indexes['secret']].'</secret>'.PHP_EOL;
+
+            $resultSip.='    </phone>'.PHP_EOL;
+        }
     }
 
 
