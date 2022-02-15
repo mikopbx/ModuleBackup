@@ -12,6 +12,7 @@ use MikoPBX\Common\Models\{Extensions, ExternalPhones, NetworkFilters};
 
 use MikoPBX\Core\System\Network;
 use MikoPBX\Core\System\Verify;
+use phpseclib3\Math\BigInteger\Engines\PHP;
 use simplehtmldom\HtmlDocument;
 
 include_once __DIR__.'/../vendor/autoload.php';
@@ -29,8 +30,16 @@ class OldConfigConverter
      */
     public function __construct($filename)
     {
+        $xmlData = file_get_contents($filename);
         $client = new HtmlDocument();
-        $this->resHtml = $client->load(file_get_contents($filename));
+        $this->resHtml = $client->load($xmlData);
+        if(count($this->resHtml->find('phone')) === 0){
+            $xmlData = $this->csvToXML($xmlData);
+            $client = new HtmlDocument();
+            $this->resHtml = $client->load($xmlData);
+        }
+
+
         $this->data     = [
             'm_Users'                     => [],
             'm_Sip'                       => [],
@@ -49,6 +58,52 @@ class OldConfigConverter
         ];
         $this->tmp_data = [];
     }
+
+    private function csvToXML(string $doc):string
+    {
+        $resultSip = '<sip>'.PHP_EOL;
+        $resultExternal = '<external>'.PHP_EOL;
+        $rows   = explode(PHP_EOL, $doc);
+        foreach ($rows as $row){
+            $columns = explode(';', $row);
+            if($columns<3){
+                continue;
+            }
+            if(!is_numeric($columns[0])){
+                continue;
+            }
+            $uid = strtoupper('SIP-PHONE-IMPORT-' . $columns[0]);
+            $resultSip.='    <phone>'.PHP_EOL;
+            $resultSip.='	    <extension>'.$columns[0].'</extension>'.PHP_EOL.
+                        '	    <callerid>'.$columns[1].'</callerid>'.PHP_EOL.
+                        '	    <uniqid>'.$uid.'</uniqid>'.PHP_EOL.
+                        '	    <secret>'.$columns[2].'</secret>'.PHP_EOL;
+
+            if(isset($columns[3])){
+                $resultExternal.= '    <phone>'.PHP_EOL;
+                $resultExternal.= '        <uniqid>'.$uid.'</uniqid>'.PHP_EOL;
+                $resultExternal.= '        <extension>'.$columns[3].'</extension>'.PHP_EOL;
+
+                $resultSip     .='        <forwarding_external>'.$uid.'</forwarding_external>'.PHP_EOL;
+
+                $ringLength = 1*($columns[4]??0);
+                if($ringLength > 1){
+                    $resultSip.='        <ringlength>'.$ringLength.'</ringlength>'.PHP_EOL;
+                }
+                if( 1*($columns[5]??0) === 1){
+                    $resultSip.='        <forwarding_on_busy_external>'.$uid.'</forwarding_on_busy_external>'.PHP_EOL;
+                    $resultSip.='        <forwarding_on_unavailable_external>'.$uid.'</forwarding_on_unavailable_external>'.PHP_EOL;
+                }
+                $resultExternal.= '    </phone>'.PHP_EOL;
+            }
+            $resultSip.='    </phone>'.PHP_EOL;
+        }
+
+        $resultSip.= '</sip>'.PHP_EOL;
+        $resultExternal.= '</external>'.PHP_EOL;
+        return "$resultSip $resultExternal";
+    }
+
 
     /**
      * Старт конвертации конфигурации.
@@ -286,26 +341,26 @@ class OldConfigConverter
             $fwd_forwardingonbusy        = null;
             $fwd_forwardingonunavailable = null;
             foreach ($this->data['m_ExtensionForwardingRights'] as &$forwarding) {
-                if ($forwarding['id_forwarding'] == $this->get('uniqid')) {
+                if ($forwarding['id_forwarding'] === $this->get('uniqid')) {
                     $userid                   = $forwarding['id_forwarding'];
                     $user_num                 = $forwarding['extension'];
                     $forwarding['forwarding'] = $this->get('extension');
                     $fwd_forwarding           = $this->get('extension');
-                    if ($forwarding['id_forwardingonbusy'] == $this->get('uniqid')) {
+                    if ($forwarding['id_forwardingonbusy'] === $this->get('uniqid')) {
                         $forwarding['forwardingonbusy'] = $this->get('extension');
                         $fwd_forwardingonbusy           = $this->get('extension');
                     }
-                    if ($forwarding['id_forwardingonunavailable'] == $this->get('uniqid')) {
+                    if ($forwarding['id_forwardingonunavailable'] === $this->get('uniqid')) {
                         $forwarding['forwardingonunavailable'] = $this->get('extension');
                         $fwd_forwardingonunavailable           = $this->get('extension');
                     }
                     break;
                 }
             }
-            if ($userid == null) {
+            unset($forwarding);
+            if (!$userid) {
                 continue;
             }
-
             $exten_db      = ExternalPhones::findFirst("extension='{$this->get('extension')}'");
             $mobile_uniqid = ($exten_db === null) ? $this->get('uniqid') : $exten_db->uniqid;
 

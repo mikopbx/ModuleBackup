@@ -184,7 +184,7 @@ class Backup extends PbxExtensionBase
             self::unpackImgBackup($res, $backupDir, $data);
         } elseif ($data['extension'] === 'zip') {
             self::unpackZipBackup($backupDir, $data);
-        } elseif ($data['extension'] === 'xml'){
+        } elseif ($data['extension'] === 'xml' || $data['extension'] === 'csv'){
             $converter = new OldConfigConverter($data['res_file']);
             $converter->parse();
             $converter->makeConfig();
