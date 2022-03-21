@@ -34,7 +34,7 @@ return [
     'bkp_BackupSheidule' => 'Cronograma',
     'bkp_Enabled' => 'Arquivo agendado',
     'bkp_RestoreMessage' => 'Você pode usar um arquivo de backup (formato ZIP e ISO) ou descarregar as configurações de um antigo PBX Askozia (formato XML)',
-    'bkp_RestoreFileName' => 'Baixe o arquivo para recuperação',
+    'bkp_RestoreFileName' => 'Envie o arquivo para recuperação',
     'bkp_backup-cdr' => 'Histórico de conversação',
     'bkp_backup-sound-files' => 'Arquivos de som',
     'bkp_backup-records' => 'Arquivos de gravação de conversas',
