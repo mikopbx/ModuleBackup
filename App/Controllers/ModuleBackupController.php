@@ -221,7 +221,7 @@ class ModuleBackupController extends BaseController
         $what_backup = [];
         foreach ($data as $name => $value) {
             if (strpos($name, 'backup-') === 0) {
-                $what_backup[$name] = ($data[$name] == 'on') ? '1' : '0';
+                $what_backup[$name] = ($data[$name] === 'on') ? '1' : '0';
             }
         }
         $rule->what_backup = json_encode($what_backup);

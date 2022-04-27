@@ -83,12 +83,10 @@ const automaticBackup = {
 		let val = automaticBackup.$ftpMode.val();
 		if (val === '1') {
 			automaticBackup.$ftpPort.parent().show();
-			automaticBackup.$ftpPort.val('22');
 		}else if(val === '3'){
 			automaticBackup.$ftpPort.parent().hide();
 		} else {
 			automaticBackup.$ftpPort.parent().show();
-			automaticBackup.$ftpPort.val('21');
 		}
 	},
 
