@@ -820,7 +820,7 @@ class Backup extends PbxExtensionBase
      * Проверка хватает ли свободноо места на диске;
      * @return bool
      */
-    private function checkDiskSpace():bool
+    public function checkDiskSpace():bool
     {
         $estimatedSize = self::getEstimatedSize();
         $needSpace = 0;
@@ -836,8 +836,12 @@ class Backup extends PbxExtensionBase
             $freeSpace = $this->getFreeSpaceOnMountPoint($this->dirs['backup']);
         }else{
             // Резервное копирование на локальный диск.
-            $storage = new Storage();
-            $freeSpaceData = $storage->getAllHdd();
+            if(Util::isDocker()){
+                $freeSpaceData = $this->getDockerHdd();
+            }else{
+                $storage = new Storage();
+                $freeSpaceData = $storage->getAllHdd();
+            }
             $mountPoint = '';
             Storage::isStorageDiskMounted('', $mountPoint);
             foreach ($freeSpaceData as $storageData){
@@ -848,6 +852,32 @@ class Backup extends PbxExtensionBase
         }
 
         return ($freeSpace > $needSpace && ($freeSpace - $needSpace) > 500);
+    }
+
+    private function getDockerHdd():array{
+        $out = [];
+        $grepPath = Util::which('grep');
+        $dfPath = Util::which('df');
+        $awkPath = Util::which('awk');
+        Processes::mwExec(
+            "{$dfPath} -k /storage | {$awkPath}  '{ print \$1 \"|\" $3 \"|\" \$4} ' | {$grepPath} -v 'Available'",
+            $out
+        );
+        $disk_data = explode('|', implode(" ", $out));
+        if (count($disk_data) === 3) {
+            $m_size = round(($disk_data[1] + $disk_data[2]) / 1024, 1);
+            $res_disks[] = [
+                'id' => $disk_data[0],
+                'size' => "" . $m_size,
+                'size_text' => "" . $m_size . " Mb",
+                'vendor' => 'Docker',
+                'mounted' => '/storage/usbdisk1/',
+                'free_space' => round($disk_data[2] / 1024, 1),
+                'partitions' => [],
+                'sys_disk' => true,
+            ];
+        }
+        return $res_disks;
     }
 
     private function getFreeSpaceOnMountPoint($mountPoint):string{
