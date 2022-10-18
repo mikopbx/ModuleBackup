@@ -50,9 +50,11 @@ class ModuleBackupController extends BaseController
 
         $headerCollectionCSS = $this->assets->collection('headerCSS');
         $headerCollectionCSS->addCss("css/cache/{$this->moduleUniqueID}/module-backup.css", true);
+        $headerCollectionCSS->addCss('css/vendor/datatable/dataTables.semanticui.min.css', true);
 
         $semanticCollectionJS = $this->assets->collection('SemanticUIJS');
         $semanticCollectionJS->addJs('js/vendor/semantic/progress.min.js', true);
+        $semanticCollectionJS->addJs('js/vendor/datatable/dataTables.semanticui.js', true);
 
         $footerCollection = $this->assets->collection('footerJS');
         $footerCollection->addJs('js/vendor/resumable.js', true);
