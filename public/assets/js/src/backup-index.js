@@ -88,6 +88,8 @@ const backupIndex = {
 			$newRow.addClass('backupIndex-file');
 			const arhDate = new Date(1000 * value.date);
 			$newRow.find('.create-date').html(arhDate.toLocaleString());
+			$newRow.find('.create-date').attr('data-order', value.date);
+
 			$newRow.find('.file-size').html(`${value.size} MB`);
 			if (value.pid.length + value.pid_recover.length > 0) {
 				$newRow.find('a').each((index, obj) => {
@@ -106,6 +108,18 @@ const backupIndex = {
 				$newRow.find('.status').html('<i class="archive icon"></i>');
 			}
 			$newRow.appendTo('#existing-backup-files-table');
+		});
+
+		$('#existing-backup-files-table').DataTable({
+			'order': [[ 1, 'dsc' ]],
+			paging: false,
+			searching: false,
+			columns: [
+				{ orderable: false },
+				null,
+				null,
+				{ orderable: false },
+			]
 		});
 	},
 	/**

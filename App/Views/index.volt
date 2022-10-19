@@ -21,11 +21,14 @@
         </thead>
         <tbody>
         <tr id="dummy-row">
-            <td class="center aligned disabled" colspan="4">{{ t._('bkp_NoBackupRecordsAvailable') }}</td>
+            <td class="center aligned disabled"> {{ t._('bkp_NoBackupRecordsAvailable') }} </td>
+            <td class="center aligned disabled"></td>
+            <td class="center aligned disabled"></td>
+            <td class="center aligned disabled"></td>
         </tr>
         <tr id="backup-template-row">
             <td class="status"><i class="spinner loading icon"></i></td>
-            <td class="create-date">17.01.2008</td>
+            <td class="create-date" data-order="1479686400">>17.01.2008</td>
             <td class="file-size">127 MB</td>
             {{ partial("partials/tablesbuttons",
                 [

@@ -224,7 +224,6 @@ class OldConfigConverter
                 'fromuser'    => null,
                 'fromdomain'  => null,
                 'uniqid'      => $uid,
-                'nat'         => 'force_rport,comedia',
                 'dtmfmode'    => $this->get('dtmfmode'),
 
             ];
@@ -273,7 +272,6 @@ class OldConfigConverter
                 'user_avatar'                 => '',
                 'sip_networkfilterid'         => 'none',
                 'file-select'                 => '',
-                'nat'                         => 'force_rport,comedia',
                 'qualify'                     => 'on',
                 'qualifyfreq'                 => '60',
                 'codec_alaw'                  => 'on',
@@ -523,7 +521,6 @@ class OldConfigConverter
                 'disabled'                   => 1,
                 'networkfilterid'            => 'none',
                 'file-select'                => '',
-                'nat'                        => 'force_rport,comedia',
                 'qualify'                    => 'on',
                 'qualifyfreq'                => '60',
                 'codec_alaw'                 => 'on',
