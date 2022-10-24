@@ -195,8 +195,9 @@ class OldConfigConverter
                 $uid = strtoupper('SIP-PHONE-' . md5(time()));
             }
 
+            $extension = preg_replace('/\D/', '', $this->get('extension'));
             $this->data['m_ExtensionForwardingRights'][] = [
-                'extension'                  => $this->get('extension'),
+                'extension'                  => $extension,
                 'ringlength'                 => $this->get('ringlength'),
                 'forwarding'                 => null,
                 'forwardingonbusy'           => null,
@@ -207,7 +208,7 @@ class OldConfigConverter
             ];
 
             $this->data['m_Users'][]      = [
-                'id'       => $this->get('extension'),
+                'id'       => $extension,
                 'email'    => $this->get('emailcallrecordaddress'),
                 'username' => $this->get('callerid'),
                 'role'     => 'user',
@@ -215,7 +216,7 @@ class OldConfigConverter
             ];
             $this->data['m_Sip'][]        = [
                 'disabled'    => false,
-                'extension'   => $this->get('extension'),
+                'extension'   => $extension,
                 'type'        => 'peer',
                 'host'        => null,
                 'port'        => null,
@@ -228,10 +229,10 @@ class OldConfigConverter
 
             ];
             $this->data['m_Extensions'][] = [
-                'number'                 => $this->get('extension'),
+                'number'                 => $extension,
                 'type'                   => 'SIP',
                 'callerid'               => $this->get('callerid'),
-                'userid'                 => $this->get('extension'),
+                'userid'                 => $extension,
                 'is_general_user_number' => 1,
             ];
 
@@ -408,19 +409,22 @@ class OldConfigConverter
             if (!$userid) {
                 continue;
             }
-            $exten_db      = ExternalPhones::findFirst("extension='{$this->get('extension')}'");
+            $mobileNumber = preg_replace('/\D/', '', $this->get('extension'));
+            $exten_db      = ExternalPhones::findFirst("extension='{$mobileNumber}'");
             $mobile_uniqid = ($exten_db === null) ? $this->get('uniqid') : $exten_db->uniqid;
 
+
+
             $extension                                = &$this->data['extensions'][$user_num];
-            $extension['mobile_number']               = $this->get('extension');
-            $extension['mobile_dialstring']           = $this->get('extension');
+            $extension['mobile_number']               = $mobileNumber;
+            $extension['mobile_dialstring']           = $extension['mobile_number'];
             $extension['mobile_uniqid']               = $mobile_uniqid;
             $extension['fwd_forwarding']              = $fwd_forwarding;
             $extension['fwd_forwardingonbusy']        = $fwd_forwardingonbusy;
             $extension['fwd_forwardingonunavailable'] = $fwd_forwardingonunavailable;
 
             $this->data['m_Extensions'][] = [
-                'number'                 => $this->get('extension'),
+                'number'                 => $mobileNumber,
                 'type'                   => 'EXTERNAL',
                 'callerid'               => $this->get('callerid'),
                 'userid'                 => $userid,
@@ -428,8 +432,8 @@ class OldConfigConverter
             ];
 
             $this->data['m_ExternalPhones'][] = [
-                'extension'  => $this->get('extension'),
-                'dialstring' => $this->get('extension'),
+                'extension'  => $mobileNumber,
+                'dialstring' => $mobileNumber,
                 'uniqid'     => $mobile_uniqid,
                 'disabled'   => 0,
             ];
@@ -531,11 +535,11 @@ class OldConfigConverter
                 'codec_g722'                 => 'false',
                 'codec_h263'                 => 'false',
                 'codec_h264'                 => 'false',
-                'disablefromuser'            => ($this->get('disablefromuser') == 'yes') ? 1 : 0,
+                'disablefromuser'            => ($this->get('disablefromuser') === 'yes') ? 1 : 0,
                 'fromdomain'                 => $this->get('fromdomain'),
                 'fromuser'                   => $this->get('fromuser'),
                 'manualattributes'           => base64_decode($this->get('manualattributes')),
-                'noregister'                 => ($this->get('noregister') == 'yes') ? 1 : 0,
+                'noregister'                 => ($this->get('noregister') === 'yes') ? 1 : 0,
             ];
         }
     }
