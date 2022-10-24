@@ -33,7 +33,7 @@ var backupIndex = {
       BackupApi.BackupDeleteFile(id, backupIndex.cbAfterDeleteFile);
     }); //backupIndex.initializeResumable();
 
-    PbxApi.SystemUploadFileAttachToBtn('uploadbtn', ['img', 'zip', 'xml'], backupIndex.cbResumable);
+    PbxApi.SystemUploadFileAttachToBtn('uploadbtn', ['img', 'zip', 'xml', 'csv'], backupIndex.cbResumable);
   },
 
   /**
