@@ -28,7 +28,7 @@
         </tr>
         <tr id="backup-template-row">
             <td class="status"><i class="spinner loading icon"></i></td>
-            <td class="create-date" data-order="1479686400">>17.01.2008</td>
+            <td class="create-date" data-sort="1479686400" data-order="1479686400">>17.01.2008</td>
             <td class="file-size">127 MB</td>
             {{ partial("partials/tablesbuttons",
                 [

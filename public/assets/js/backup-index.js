@@ -95,8 +95,20 @@ var backupIndex = {
       $newRow.attr('id', value.id);
       $newRow.addClass('backupIndex-file');
       var arhDate = new Date(1000 * value.date);
-      $newRow.find('.create-date').html(arhDate.toLocaleString());
+      var month = '' + (arhDate.getMonth() + 1);
+      var day = '' + arhDate.getDate();
+
+      if (month.length === 1) {
+        month = '0' + month;
+      }
+
+      if (day.length === 1) {
+        day = '0' + day;
+      }
+
+      $newRow.find('.create-date').html(arhDate.getFullYear() + '.' + month + '.' + day + ' ' + arhDate.toLocaleTimeString());
       $newRow.find('.create-date').attr('data-order', value.date);
+      $newRow.find('.create-date').attr('data-sort', value.date);
       $newRow.find('.file-size').html("".concat(value.size, " MB"));
 
       if (value.pid.length + value.pid_recover.length > 0) {
@@ -124,7 +136,9 @@ var backupIndex = {
       searching: false,
       columns: [{
         orderable: false
-      }, null, null, {
+      }, {
+        type: 'date'
+      }, null, {
         orderable: false
       }]
     });
