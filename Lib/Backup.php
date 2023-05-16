@@ -141,7 +141,7 @@ class Backup extends PbxExtensionBase
      *
      * @param array $data
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function unpackUploadedImgConf($data): PBXApiResult
     {
@@ -351,7 +351,7 @@ class Backup extends PbxExtensionBase
      *
      * @param array | null $options
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function start($options = null): PBXApiResult
     {
@@ -383,7 +383,7 @@ class Backup extends PbxExtensionBase
      * @param string $id
      * @param        $options
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function startRecover($id, $options = null): PBXApiResult
     {
@@ -428,7 +428,7 @@ class Backup extends PbxExtensionBase
      *
      * @param $id
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function stop($id): PBXApiResult
     {
@@ -448,7 +448,7 @@ class Backup extends PbxExtensionBase
      *
      * @param $id
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function remove($id): PBXApiResult
     {
@@ -498,7 +498,7 @@ class Backup extends PbxExtensionBase
      *
      * @param string $backup_dir
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function listBackups(string $backup_dir = ''): PBXApiResult
     {
@@ -674,7 +674,7 @@ class Backup extends PbxExtensionBase
     /**
      * Start backup action by schedule
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function startScheduled(): PBXApiResult
     {
@@ -707,7 +707,7 @@ class Backup extends PbxExtensionBase
      *
      * @param $id
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function checkStorageFtp($id): PBXApiResult
     {
@@ -763,7 +763,7 @@ class Backup extends PbxExtensionBase
      *
      * @param $id - backup ID
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function download($id):PBXApiResult
     {
@@ -1107,7 +1107,7 @@ class Backup extends PbxExtensionBase
     /**
      * Возвращает предполагаемый размер каталогов для бекапа.
      *
-     * @return PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function getEstimatedSize(): PBXApiResult
     {
@@ -1335,7 +1335,7 @@ class Backup extends PbxExtensionBase
      *
      * @param string $config_file
      *
-     * @return \MikoPBX\PBXCoreREST\Lib\PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function convertConfig($config_file = ''): PBXApiResult
     {
@@ -1375,7 +1375,7 @@ class Backup extends PbxExtensionBase
     /**
      * Returns status uploading backup file
      *
-     * @return \MikoPBX\PBXCoreREST\Lib\PBXApiResult
+     * @return PBXApiResult An object containing the result of the API call.
      */
     public static function statusUpload($id):PBXApiResult
     {
