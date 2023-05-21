@@ -268,7 +268,7 @@ class OldConfigConverter
                 'sip_type'                    => 'peer',
                 'is_general_user_number'      => 1,
                 'sip_disabled'                => 0,
-                'user_role'                   => 'user',
+                //'user_role'                   => 'user',
                 'user_avatar'                 => '',
                 'sip_networkfilterid'         => 'none',
                 'file-select'                 => '',
