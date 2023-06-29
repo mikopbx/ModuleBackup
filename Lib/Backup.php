@@ -863,8 +863,9 @@ class Backup extends PbxExtensionBase
             "{$dfPath} -k /storage | {$awkPath}  '{ print \$1 \"|\" $3 \"|\" \$4} ' | {$grepPath} -v 'Available'",
             $out
         );
+        $res_disks = [];
         $disk_data = explode('|', implode(" ", $out));
-        if (count($disk_data) === 3) {
+        if (count($disk_data) >= 3) {
             $m_size = round(($disk_data[1] + $disk_data[2]) / 1024, 1);
             $res_disks[] = [
                 'id' => $disk_data[0],
