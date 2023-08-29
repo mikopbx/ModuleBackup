@@ -3,5 +3,9 @@
   "moduleUniqueID":"ModuleBackup",
   "support_email": "help@miko.ru",
   "version": "%ModuleVersion%",
-  "min_pbx_version": "2021.3.157"
+  "min_pbx_version": "2023.2.150",
+  "wiki_links": {
+    "ru": {"https://wiki.mikopbx.com/module-backup": "https://docs.mikopbx.com/mikopbx/modules/miko/module-backup"},
+    "en": {"https://wiki.mikopbx.com/module-backup": "https://docs.mikopbx.com/mikopbx/v/english/modules/miko/module-backup"}
+  }
 }
