@@ -243,6 +243,7 @@ class OldConfigConverter
                 'fromuser'    => null,
                 'fromdomain'  => null,
                 'uniqid'      => $uid,
+                'enableRecording' => '1',
                 'dtmfmode'    => $this->get('dtmfmode'),
 
             ];
