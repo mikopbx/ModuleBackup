@@ -56,4 +56,5 @@ return [
     'bkp_UploadComplete' => 'Elaborazione completata',
     'bkp_ValidateTimeEmpty' => 'Il tempo di backup non è corretto',
     'bkp_FTPPort' => 'Porta',
+    'bkp_Mode' => 'Protocollo',
 ];
