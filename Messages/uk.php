@@ -56,4 +56,5 @@ return [
     'bkp_DeleteFiles' => 'Видалити файл бекапа',
     'bkp_NoBackupRecordsAvailable' => 'Немає доступних архівних копій',
     'bkp_ValidateHostEmpty' => 'Не вказана адреса сервера FTP',
+    'bkp_Mode' => 'Протокол',
 ];
