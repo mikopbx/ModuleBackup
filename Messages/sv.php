@@ -56,4 +56,5 @@ return [
     'bkp_DeleteFiles' => 'Ta bort backupfil',
     'bkp_FTPSecret' => 'lösenord',
     'BreadcrumbModuleBackupcreate' => 'Säkerhetskopiering',
+    'bkp_Mode' => 'Protokoll',
 ];
