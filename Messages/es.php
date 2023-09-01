@@ -56,4 +56,5 @@ return [
  *
  */
     'BreadcrumbModuleBackup' => 'Módulo de respaldo',
+    'bkp_Mode' => 'Protocolo',
 ];
