@@ -56,6 +56,5 @@ return [
     'bkp_UploadInProgress' => 'Upload file to the internal storage',
     'bkp_CreateBackupAfterSaveSettings' => 'Start backup immediately after saving settings',
     'bkp_ErrorOnDownloadBackup' => 'Could not find backup file',
-    'bkp_FTP_MODE' => 'FTP',
     'bkp_Mode' => 'Mode',
 ];
