@@ -8,9 +8,11 @@
 
 namespace Modules\ModuleBackup\Lib;
 
+use MikoPBX\Common\Handlers\CriticalErrorsHandler;
+use MikoPBX\Core\System\{Processes, Util};
 use MikoPBX\Core\Workers\WorkerBase;
 use Modules\ModuleBackup\Models\BackupRules;
-use MikoPBX\Core\System\{Processes, Storage, Util};
+
 require_once 'Globals.php';
 
 class WorkerBackup extends WorkerBase
@@ -82,9 +84,7 @@ if (isset($argv) && count($argv) > 1) {
         $worker = new $workerClassname();
         $worker->start($argv);
     } catch (\Throwable $e) {
-        global $errorLogger;
-        $errorLogger->captureException($e);
-        Util::sysLogMsg("{$workerClassname}_EXCEPTION", $e->getMessage(), LOG_ERR);
+        CriticalErrorsHandler::handleExceptionWithSyslog($e);
     }
 }
 

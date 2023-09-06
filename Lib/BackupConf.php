@@ -20,9 +20,9 @@ class BackupConf extends ConfigClass
 {
 
     /**
-     * @param $tasks
+     * @param array $tasks
      */
-    public function createCronTasks(&$tasks): void
+    public function createCronTasks(array &$tasks): void
     {
         $cron_user = $this->getCronUser();
         $commands = BackupRules::find('enabled="1"');
