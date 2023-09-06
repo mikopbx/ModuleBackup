@@ -56,4 +56,5 @@ return [
  */
     'BreadcrumbModuleBackup' => 'バックアップモジュール',
     'bkp_backup-config' => 'PBX設定',
+    'bkp_Mode' => 'プロトコル',
 ];

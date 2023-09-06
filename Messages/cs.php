@@ -56,4 +56,5 @@ return [
     'BreadcrumbModuleBackup' => 'Záložní modul',
     'bkp_RestoreError' => 'Obnovení archivu se nezdařilo',
     'bkp_CreateDate' => 'Datum archivace',
+    'bkp_Mode' => 'Protokol',
 ];

@@ -56,4 +56,5 @@ return [
  */
     'BreadcrumbModuleBackup' => 'Backup modul',
     'SubHeaderModuleBackup' => 'Kopier til FTP / SFTP på en tidsplan, gendannelse fra ZIP, IMG',
+    'bkp_Mode' => 'Protokol',
 ];

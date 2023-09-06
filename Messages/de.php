@@ -56,4 +56,5 @@ return [
     'bkp_UploadInProgress' => 'Backup wird geladen',
     'bkp_CreateBackupAfterSaveSettings' => 'Starten Sie die Sicherung sofort nach dem Speichern der Einstellungen',
     'bkp_ErrorOnDownloadBackup' => 'Sicherungsdatei konnte nicht gefunden werden',
+    'bkp_Mode' => 'Protokoll',
 ];

@@ -56,4 +56,5 @@ return [
  */
     'BreadcrumbModuleBackup' => '备份模块',
     'bkp_DeleteFiles' => '删除备份文件',
+    'bkp_Mode' => '协议',
 ];

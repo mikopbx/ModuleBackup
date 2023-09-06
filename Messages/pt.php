@@ -56,4 +56,5 @@ return [
     'bkp_ErrorOnDownloadBackup' => 'Não foi possível encontrar o arquivo de backup',
     'bkp_UploadError' => 'Falha ao carregar arquivo de backup',
     'SubHeaderModuleBackup' => 'Copiar para FTP / SFTP em uma programação, recuperação de ZIP, IMG',
+    'bkp_Mode' => 'Protocolo',
 ];

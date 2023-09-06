@@ -56,4 +56,5 @@ return [
  */
     'BreadcrumbModuleBackup' => 'Mô-đun sao lưu',
     'BreadcrumbModuleBackupcreate' => 'Sao lưu',
+    'bkp_Mode' => 'Giao thức',
 ];

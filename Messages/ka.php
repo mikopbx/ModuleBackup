@@ -56,4 +56,5 @@ return [
  *
  */
     'BreadcrumbModuleBackup' => 'სარეზერვო მოდული',
+    'bkp_Mode' => 'Ოქმი',
 ];

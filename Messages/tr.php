@@ -56,4 +56,5 @@ return [
     'BreadcrumbModuleBackup' => 'Yedekleme modülü',
     'bkp_Restore' => 'Tamam',
     'bkp_EveryDay' => 'Günlük',
+    'bkp_Mode' => 'Protokol',
 ];

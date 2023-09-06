@@ -56,4 +56,5 @@ return [
     'BreadcrumbModuleBackup' => 'Moduł zapasowy',
     'bkp_FTPPath' => 'Ścieżka serwera',
     'bkp_backup-config' => 'Ustawienia centrali PBX',
+    'bkp_Mode' => 'Protokół',
 ];
