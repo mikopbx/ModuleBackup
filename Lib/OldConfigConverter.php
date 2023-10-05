@@ -256,7 +256,7 @@ class OldConfigConverter
             ];
 
             $rules         = 'rule_SIP,local_network';
-            $networkfilter = $this->addNetFilter($this->get('permitip'), $this->get('permitnetmask'), $rules);
+            $networkfilter = $this->addNetFilter((string) $this->get('permitip'), (string) $this->get('permitnetmask'), $rules);
 
             $secret = substr($this->get('secret'), 0, stripos($this->get('secret'), '</secret>'));
             $secret = (trim($secret) === '') ? $this->get('secret') : $secret;
@@ -468,7 +468,7 @@ class OldConfigConverter
             $this->initData($e->children);
             if ($this->get('username') != null) {
                 $rules         = 'rule_AMI';
-                $networkfilter = $this->addNetFilter($this->get('permitip'), $this->get('permitnetmask'), $rules);
+                $networkfilter = $this->addNetFilter((string) $this->get('permitip'), (string) $this->get('permitnetmask'), $rules);
 
                 $manager = [
                     'id'              => null,
