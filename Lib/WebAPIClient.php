@@ -9,46 +9,46 @@
 namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Core\System\MikoPBXConfig;
+use Exception;
 
 class WebAPIClient
 {
-    private $host = '127.0.0.1';
-    private $protocol = 'http';
-    private $port = '80';
-    private $ckfile = '/tmp/pbx_web_cookie.txt';
-    private $errors = [];
+    private string $host       = '127.0.0.1';
+    private string $protocol   = 'http';
+    private string $port       = '80';
+    private string $ckFile     = '/tmp/pbx_web_cookie.txt';
+    private array  $errors     = [];
+    private string $baseUrl    = 'http://127.0.0.1:80';
+    private array  $extensionTemplate = [];
 
     /**
      * Авторизация на телефонной станции.
      */
-    public function login()
+    public function login():bool
     {
-        $result = false;
-
-        if (file_exists($this->ckfile)) {
-            unlink($this->ckfile);
+        if (file_exists($this->ckFile)) {
+            unlink($this->ckFile);
         }
         $config       = new MikoPBXConfig();
         $res_login    = $config->getGeneralSettings("WebAdminLogin");
         $res_password = $config->getGeneralSettings("WebAdminPassword");
         $WEBPort      = $config->getGeneralSettings("WEBPort");
-
         if ( ! empty($WEBPort)) {
             $this->port = $WEBPort;
         }
-
         $data          = [
             'login'    => $res_login,
             'password' => $res_password,
         ];
-        $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/session/start";
-        $resultrequest = $this->postData($url, $data, true);
-        if ($resultrequest['success'] == true) {
-            $result = true;
-        } else {
+        $this->baseUrl = "$this->protocol://$this->host:$this->port";
+        $url           = "$this->baseUrl/admin-cabinet/session/start";
+        $resultRequest = $this->postData($url, $data, true);
+
+        $result = $resultRequest['success']??false;
+        if (!$result) {
             $this->errors['login'][] = [
                 'data'    => $data,
-                'message' => $resultrequest['message'],
+                'message' => $resultRequest['message'],
             ];
         }
 
@@ -64,29 +64,31 @@ class WebAPIClient
      *
      * @return string
      */
-    private function postData($url, $data, $is_login = false)
+    private function postData(string $url, array $data, bool$is_login = false)
     {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-        if ($is_login == true) {
-            curl_setopt($ch, CURLOPT_COOKIEJAR, $this->ckfile);
+        if ($is_login) {
+            curl_setopt($ch, CURLOPT_COOKIEJAR, $this->ckFile);
         } else {
-            curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckfile);
+            curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckFile);
         }
-
         $headers = [
             'X-Requested-With: XMLHttpRequest',
             'Content-Type: application/x-www-form-urlencoded',
         ];
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        // $http_code      = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $resultrequest = curl_exec($ch);
-        curl_close($ch);
+        try {
+            $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
+            curl_close($ch);
+        }catch ( Exception $e){
+            $result = ['message' => $e->getMessage()];
+        }
 
-        return json_decode("$resultrequest", true);
+        return $result;
     }
 
     /**
@@ -96,20 +98,29 @@ class WebAPIClient
      *
      * @return bool
      */
-    public function addExtension($data)
+    public function addExtension($data):bool
     {
-        $result = false;
-        if ( ! file_exists($this->ckfile)) {
-            return $result;
+        if (!file_exists($this->ckFile)) {
+            return false;
         }
-        $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/extensions/save";
-        $resultrequest = $this->postData($url, $data);
-        if ($resultrequest['success'] == true) {
+        if(empty($this->extensionTemplate)){
+            $this->extensionTemplate = $this->getData("$this->baseUrl/pbxcore/api/extensions/getRecord?id=")['data']??[];
+        }
+        $params = $this->extensionTemplate;
+        foreach ($data as $key => $value){
+            if(isset($params[$key]) && $value !== null){
+                $params[$key] = $value;
+            }
+        }
+        $result = false;
+        $url           = "$this->baseUrl/pbxcore/api/extensions/saveRecord";
+        $response = $this->postData($url, $params);
+        if ($response && $response['success'] === true) {
             $result = true;
         } else {
             $this->errors['extensions'][] = [
-                'data'    => $data,
-                'message' => $resultrequest['message'],
+                'data'    => $params,
+                'message' => $response['message'],
             ];
         }
 
@@ -123,10 +134,10 @@ class WebAPIClient
      */
     public function storage_list()
     {
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
-        $url           = "{$this->protocol}://{$this->host}:{$this->port}/pbxcore/api/storage/list";
+        $url           = "$this->baseUrl/pbxcore/api/storage/list";
 
         return $this->getData($url);
     }
@@ -143,11 +154,14 @@ class WebAPIClient
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckfile);
-        $resultrequest = curl_exec($ch);
-        curl_close($ch);
-
-        return json_decode("$resultrequest", true);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckFile);
+        try {
+            $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
+            curl_close($ch);
+        }catch ( Exception $e){
+            $result = ['message' => $e->getMessage()];
+        }
+        return $result;
     }
 
     /**
@@ -160,10 +174,10 @@ class WebAPIClient
     public function addProviderSip($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return $result;
         }
-        $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/providers/save/sip";
+        $url           = "$this->baseUrl/admin-cabinet/providers/save/sip";
         $resultrequest = $this->postData($url, $data);
         if ($resultrequest['success'] == true) {
             $result = true;
@@ -187,7 +201,7 @@ class WebAPIClient
     public function addProviderIax($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return $result;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/providers/save/iax";
@@ -214,7 +228,7 @@ class WebAPIClient
     public function addManager($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/asterisk-managers/save";
@@ -242,7 +256,7 @@ class WebAPIClient
     public function addNetFilter($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/firewall/save";
@@ -270,7 +284,7 @@ class WebAPIClient
     public function addQueue($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/call-queues/save";
@@ -298,7 +312,7 @@ class WebAPIClient
     public function addIvrMenu($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/ivr-menu/save";
@@ -326,7 +340,7 @@ class WebAPIClient
     public function addSmartIvr($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/module-smart-i-v-r/save";
@@ -354,7 +368,7 @@ class WebAPIClient
     public function add_dialplan_applications($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckfile)) {
+        if ( ! file_exists($this->ckFile)) {
             return false;
         }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/dialplan-applications/save";
