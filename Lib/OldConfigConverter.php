@@ -861,11 +861,6 @@ class OldConfigConverter
     public function makeConfig(): bool
     {
         $w_api = new WebAPIClient();
-        $res   = $w_api->login();
-        if ( ! $res) {
-            return false;
-        }
-
         foreach ($this->data['net_filters'] as $key => $value) {
             $filter = NetworkFilters::findFirst("permit='{$key}'");
             if ($filter === null) {
