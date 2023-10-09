@@ -31,9 +31,8 @@ var backupIndex = {
       e.preventDefault();
       var id = $(e.target).closest('a').attr('data-value');
       BackupApi.BackupDeleteFile(id, backupIndex.cbAfterDeleteFile);
-    }); //backupIndex.initializeResumable();
-
-    PbxApi.SystemUploadFileAttachToBtn('uploadbtn', ['img', 'zip', 'xml', 'csv'], backupIndex.cbResumable);
+    });
+    PbxApi.SystemUploadFileAttachToBtn('uploadbtn', ['img', 'zip', 'xml', 'csv', 'tar'], backupIndex.cbResumable);
   },
 
   /**
@@ -130,25 +129,30 @@ var backupIndex = {
 
       $newRow.appendTo('#existing-backup-files-table');
     });
-    $('#existing-backup-files-table').DataTable({
-      'order': [[1, 'dsc']],
-      paging: false,
-      searching: false,
-      columns: [{
-        orderable: false
-      }, {
-        type: 'date'
-      }, null, {
-        orderable: false
-      }]
-    });
+    var idTable = $('#existing-backup-files-table');
+
+    if (idTable.attr('data-dt-init') !== '1') {
+      idTable.DataTable({
+        'order': [[1, 'dsc']],
+        paging: false,
+        searching: false,
+        columns: [{
+          orderable: false
+        }, {
+          type: 'date'
+        }, null, {
+          orderable: false
+        }]
+      });
+      idTable.attr('data-dt-init', '1');
+    }
   },
 
   /**
-   * Callback file upload with chunks
-   * @param action
-   * @param params
-   */
+  	 * Callback file upload with chunks
+  	 * @param action
+  	 * @param params
+  	 */
   cbResumable: function cbResumable(action, params) {
     switch (action) {
       case 'fileSuccess':
