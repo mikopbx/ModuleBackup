@@ -32,8 +32,7 @@ const backupIndex = {
 			const id = $(e.target).closest('a').attr('data-value');
 			BackupApi.BackupDeleteFile(id, backupIndex.cbAfterDeleteFile);
 		});
-		//backupIndex.initializeResumable();
-		PbxApi.SystemUploadFileAttachToBtn('uploadbtn',['img', 'zip', 'xml', 'csv'], backupIndex.cbResumable);
+		PbxApi.SystemUploadFileAttachToBtn('uploadbtn',['img', 'zip', 'xml', 'csv', 'tar'], backupIndex.cbResumable);
 	},
 	/**
 	 * Изменение статуса кнопок при изменении статуса модуля
@@ -119,19 +118,23 @@ const backupIndex = {
 			$newRow.appendTo('#existing-backup-files-table');
 		});
 
-		$('#existing-backup-files-table').DataTable({
-			'order': [[ 1, 'dsc' ]],
-			paging: false,
-			searching: false,
-			columns: [
-				{ orderable: false},
-				{ type: 'date'},
-				null,
-				{ orderable: false },
-			]
-		});
+		let idTable = $('#existing-backup-files-table');
+		if(idTable.attr('data-dt-init') !== '1'){
+			idTable.DataTable({
+				'order': [[ 1, 'dsc' ]],
+				paging: false,
+				searching: false,
+				columns: [
+					{ orderable: false},
+					{ type: 'date'},
+					null,
+					{ orderable: false },
+				]
+			});
+			idTable.attr('data-dt-init', '1');
+		}
 	},
-	/**
+/**
 	 * Callback file upload with chunks
 	 * @param action
 	 * @param params
