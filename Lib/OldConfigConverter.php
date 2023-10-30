@@ -26,7 +26,7 @@
 
 namespace Modules\ModuleBackup\Lib;
 
-use MikoPBX\Common\Models\{Extensions, ExternalPhones, NetworkFilters};
+use MikoPBX\Common\Models\{CustomFiles, Extensions, ExternalPhones, NetworkFilters, PbxSettings};
 
 use MikoPBX\Core\System\Network;
 use MikoPBX\Core\System\Verify;
@@ -100,6 +100,18 @@ class OldConfigConverter
      */
     private function makeXmlFromCsvMain(array $rows, string &$resultSip, string &$resultExternal):void
     {
+        $content = '';
+        $pjsipConf = CustomFiles::findFirst('filepath="/etc/asterisk/pjsip.conf"');
+        if($pjsipConf){
+            $content = base64_decode($pjsipConf->content).PHP_EOL;
+            if(strpos($content, '[custom_aor_template]') === false){
+                $content.=  "[custom_aor_template](!)".PHP_EOL.
+                    "type = aor".PHP_EOL.
+                    "qualify_frequency = 60".PHP_EOL.
+                    "qualify_timeout = 5".PHP_EOL.
+                    "max_contacts = 5".PHP_EOL.PHP_EOL;
+            }
+        }
         foreach ($rows as $row){
             $columns = explode(';', $row);
             if($columns<3){
@@ -108,11 +120,29 @@ class OldConfigConverter
             if(!is_numeric($columns[0])){
                 continue;
             }
-            $uid = strtoupper('SIP-PHONE-IMPORT-' . $columns[0]);
+            $manualattributes = '';
+            $authUsername = $columns[6]??'';
+            if(!empty($authUsername)){
+                $manualattributes = base64_encode("[auth]".PHP_EOL.
+                                    "username = $authUsername".PHP_EOL.
+                                    "[endpoint]".PHP_EOL.
+                                    "aors={$columns[0]},$authUsername");
+
+                if(strpos($content, "[$authUsername](custom_aor_template)") === false) {
+                    $content.= "[$authUsername](custom_aor_template)".PHP_EOL.
+                        "[$authUsername] ".PHP_EOL.
+                        "type = identify".PHP_EOL.
+                        "endpoint = {$columns[0]}".PHP_EOL.
+                        "match_header=From: /.*<sip:$authUsername@.*/".PHP_EOL;
+                }
+            }
+            $uid = strtoupper('SIP-IMP-' . $columns[0]);
+            $name = empty($columns[1])?$columns[0]:$columns[1];
             $resultSip.='    <phone>'.PHP_EOL;
             $resultSip.='	    <extension>'.$columns[0].'</extension>'.PHP_EOL.
-                '	    <callerid>'.$columns[1].'</callerid>'.PHP_EOL.
+                '	    <callerid>'.$name.'</callerid>'.PHP_EOL.
                 '	    <uniqid>'.$uid.'</uniqid>'.PHP_EOL.
+                '	    <manualattributes>'.$manualattributes.'</manualattributes>'.PHP_EOL.
                 '	    <secret>'.$columns[2].'</secret>'.PHP_EOL;
 
             if(isset($columns[3])){
@@ -133,6 +163,13 @@ class OldConfigConverter
                 $resultExternal.= '    </phone>'.PHP_EOL;
             }
             $resultSip.='    </phone>'.PHP_EOL;
+        }
+
+        if($pjsipConf){
+
+            $pjsipConf->content = base64_encode($content);
+            $pjsipConf->mode = 'append';
+            $pjsipConf->save();
         }
     }
 
@@ -301,7 +338,7 @@ class OldConfigConverter
                 'codec_g722'                  => 'false',
                 'codec_h263'                  => 'false',
                 'codec_h264'                  => 'false',
-                'sip_manualattributes'        => '',
+                'sip_manualattributes'            => base64_decode($this->get('manualattributes')),
                 'mobile_number'               => '',
                 'mobile_dialstring'           => '',
                 'mobile_uniqid'               => null,

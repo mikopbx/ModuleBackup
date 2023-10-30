@@ -16,7 +16,6 @@ class WebAPIClient
     private string $host       = '127.0.0.1';
     private string $protocol   = 'http';
     private string $port       = '80';
-    private string $ckFile     = '/tmp/pbx_web_cookie.txt';
     private array  $errors     = [];
     private string $baseUrl    = 'http://127.0.0.1:80';
     private array  $extensionTemplate = [];
@@ -26,9 +25,6 @@ class WebAPIClient
      */
     public function login():bool
     {
-        if (file_exists($this->ckFile)) {
-            unlink($this->ckFile);
-        }
         $config       = new MikoPBXConfig();
         $res_login    = $config->getGeneralSettings("WebAdminLogin");
         $res_password = $config->getGeneralSettings("WebAdminPassword");
@@ -71,11 +67,6 @@ class WebAPIClient
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-        if ($is_login) {
-            curl_setopt($ch, CURLOPT_COOKIEJAR, $this->ckFile);
-        } else {
-            curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckFile);
-        }
         $headers = [
             'X-Requested-With: XMLHttpRequest',
             'Content-Type: application/x-www-form-urlencoded',
@@ -100,9 +91,6 @@ class WebAPIClient
      */
     public function addExtension($data):bool
     {
-        if (!file_exists($this->ckFile)) {
-            return false;
-        }
         if(empty($this->extensionTemplate)){
             $this->extensionTemplate = $this->getData("$this->baseUrl/pbxcore/api/extensions/getRecord?id=")['data']??[];
         }
@@ -134,11 +122,7 @@ class WebAPIClient
      */
     public function storage_list()
     {
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "$this->baseUrl/pbxcore/api/storage/list";
-
         return $this->getData($url);
     }
 
@@ -154,7 +138,6 @@ class WebAPIClient
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $this->ckFile);
         try {
             $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
             curl_close($ch);
@@ -174,9 +157,6 @@ class WebAPIClient
     public function addProviderSip($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return $result;
-        }
         $url           = "$this->baseUrl/admin-cabinet/providers/save/sip";
         $resultrequest = $this->postData($url, $data);
         if ($resultrequest['success'] == true) {
@@ -201,9 +181,6 @@ class WebAPIClient
     public function addProviderIax($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return $result;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/providers/save/iax";
         $resultrequest = $this->postData($url, $data);
         if ($resultrequest['success'] == true) {
@@ -228,9 +205,6 @@ class WebAPIClient
     public function addManager($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/asterisk-managers/save";
         $resultrequest = $this->postData($url, $data);
 
@@ -256,9 +230,6 @@ class WebAPIClient
     public function addNetFilter($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/firewall/save";
         $resultrequest = $this->postData($url, $data);
 
@@ -284,9 +255,6 @@ class WebAPIClient
     public function addQueue($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/call-queues/save";
         $resultrequest = $this->postData($url, $data);
 
@@ -312,9 +280,6 @@ class WebAPIClient
     public function addIvrMenu($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/ivr-menu/save";
         $resultrequest = $this->postData($url, $data);
 
@@ -340,9 +305,6 @@ class WebAPIClient
     public function addSmartIvr($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/module-smart-i-v-r/save";
         $resultrequest = $this->postData($url, $data);
 
@@ -368,9 +330,6 @@ class WebAPIClient
     public function add_dialplan_applications($data)
     {
         $result = false;
-        if ( ! file_exists($this->ckFile)) {
-            return false;
-        }
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/dialplan-applications/save";
         $resultrequest = $this->postData($url, $data);
 
