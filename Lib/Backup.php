@@ -10,7 +10,7 @@ namespace Modules\ModuleBackup\Lib;
 
 use Exception;
 use MikoPBX\PBXCoreREST\Lib\PBXApiResult;
-use MikoPBX\Core\System\{Processes, Storage, System, Util};
+use MikoPBX\Core\System\{Directories, Processes, Storage, System, Util};
 use MikoPBX\Modules\PbxExtensionBase;
 use Modules\ModuleBackup\Models\BackupRules;
 use Phalcon\Di;
@@ -1410,12 +1410,7 @@ class Backup extends PbxExtensionBase
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
         $res->success = true;
-        $di     = Di::getDefault();
-        if ($di !== null){
-            $tempDir = $di->getConfig()->path('core.tempDir');
-        } else {
-            $tempDir = '/tmp';
-        }
+        $tempDir = Directories::getDir(Directories::CORE_TEMP_DIR);
         if (empty($config_file)) {
             $config_file = "{$tempDir}/old_config.xml";
         }
