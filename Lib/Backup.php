@@ -58,12 +58,11 @@ class Backup extends PbxExtensionBase
 
         $this->dirs_mem = self::getAsteriskDirsMem();
         // Проверим особенность бекапа на сетевой диск.
-        $duPath      = Util::which('du');
-        $busyboxPath = Util::which('busybox');
-        $awkPath     = Util::which('awk');
+        $du      = Util::which('du');
+        $awk     = Util::which('awk');
 
         Processes::mwExec(
-            "{$duPath} /storage/*/{$id}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+            "$du /storage/*/{$id}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
             $out
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
@@ -248,11 +247,10 @@ class Backup extends PbxExtensionBase
             // Бекап выполнялся на диск - хранилище
             $path_b_dir = "{$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/{$data['dir_name']}";
         }
-        $duPath      = Util::which('du');
-        $busyboxPath = Util::which('busybox');
-        $awkPath     = Util::which('awk');
+        $du      = Util::which('du');
+        $awk     = Util::which('awk');
         Processes::mwExec(
-            "{$duPath} {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+            "$du {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
             $out
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
@@ -262,7 +260,7 @@ class Backup extends PbxExtensionBase
 
         if ( ! file_exists($path_b_dir)) {
             Processes::mwExec(
-                "{$duPath} {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+                "$du {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
                 $out
             );
             if (($out[0] ?? false) && file_exists($out[0])) {
@@ -274,15 +272,15 @@ class Backup extends PbxExtensionBase
                 }
             }
         }
-        $cpPath = Util::which('cp');
-        $resMwExec    = Processes::mwExec("{$cpPath} {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
+        $cp = Util::which('cp');
+        $resMwExec    = Processes::mwExec("$cp {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
 
-        $umountPath = Util::which('umount');
-        Processes::mwExec("{$umountPath} {$data['res_file']}");
+        $umount = Util::which('umount');
+        Processes::mwExec("$umount {$data['res_file']}");
         if (isset($res->data['new_id'])) {
-            $mvPath           = Util::which('mv');
+            $mv           = Util::which('mv');
             $resMwExec              = Processes::mwExec(
-                "{$mvPath} {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
+                "$mv {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
             );
             $data['dir_name'] = $res->data['new_id'];
         }
@@ -348,37 +346,36 @@ class Backup extends PbxExtensionBase
      */
     public static function staticExtractFile($id, $arh, $filename): void
     {
-        $umountPath  = Util::which('umount');
-        $mountPath   = Util::which('mount');
-        $cpPath      = Util::which('cp');
-        $mvPath      = Util::which('mv');
-        $duPath      = Util::which('du');
-        $sevenZaPath = Util::which('7za');
-        $grepPath    = Util::which('grep');
-        $awkPath     = Util::which('awk');
-        $busyboxPath = Util::which('busybox');
+        $umount  = Util::which('umount');
+        $mount   = Util::which('mount');
+        $cp      = Util::which('cp');
+        $mv      = Util::which('mv');
+        $du      = Util::which('du');
+        $sevenZa = Util::which('7za');
+        $grep    = Util::which('grep');
+        $awk     = Util::which('awk');
 
         $type = Util::getExtensionOfFile($arh);
         if ($type === self::ARH_TYPE_IMG) {
             $result_dir = basename($arh) . '/mnt_point';
             if ( ! Storage::diskIsMounted($arh, '')) {
-                Processes::mwExec("{$mountPath} -o loop {$arh} {$result_dir}");
+                Processes::mwExec("{$mount} -o loop {$arh} {$result_dir}");
             }
-            Processes::mwExec("{$duPath} /storage/*/{$id} -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'", $out);
+            Processes::mwExec("$du /storage/*/{$id} -d 0 2> /dev/null | $awk '{print $2}'", $out);
             if (($out[0] ?? false) && file_exists($out[0])) {
                 $src_file = $out[0];
             } else {
                 $src_file = "{$result_dir}{$filename}";
             }
-            Processes::mwExec("{$cpPath} '{$src_file}' '{$filename}'", $arr_out);
-            Processes::mwExec("{$umountPath} $arh");
+            Processes::mwExec("$cp '{$src_file}' '{$filename}'", $arr_out);
+            Processes::mwExec("$umount $arh");
         } else {
-            Processes::mwExec("{$sevenZaPath} e -y -r -spf {$arh} {$filename}");
+            Processes::mwExec("$sevenZa e -y -r -spf {$arh} {$filename}");
             if ( ! file_exists($filename)) {
                 $command_status = Processes::mwExec(
-                    "{$sevenZaPath} l {$arh} | {$grepPath} '" . basename(
+                    "$sevenZa l {$arh} | {$grep} '" . basename(
                         $filename
-                    ) . "' | {$busyboxPath} {$awkPath} '{print $6}'",
+                    ) . "' | $awk '{print $6}'",
                     $out
                 );
                 if ($command_status === 0) {
@@ -388,8 +385,8 @@ class Backup extends PbxExtensionBase
                     Util::mwMkdir($file_dir);
                     $file_dir = dirname($filename);
                     Util::mwMkdir($file_dir);
-                    Processes::mwExec("{$sevenZaPath} e -y -r -spf {$arh} {$path_to_file}");
-                    Processes::mwExec("{$mvPath} $path_to_file $filename");
+                    Processes::mwExec("$sevenZa e -y -r -spf {$arh} {$path_to_file}");
+                    Processes::mwExec("$mv $path_to_file $filename");
                 }
             }
         }
