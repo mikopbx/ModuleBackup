@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Cổng máy chủ FTP không được chỉ định',
     'bkp_ValidateHostEmpty' => 'Địa chỉ máy chủ FTP không được chỉ định',
     'bkp_FTPSettings' => 'Máy chủ FTP / SFTP để lưu trữ các bản sao lưu',
-    'bkp_FTPMode' => 'Chế độ FTP',
-    'bkp_SFTPMode' => 'Chế độ SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Đường dẫn máy chủ',
     'bkp_FTPSecret' => 'Mật khẩu',
     'bkp_FTPUsername' => 'Tên đăng nhập',
@@ -57,4 +57,5 @@ return [
     'BreadcrumbModuleBackup' => 'Mô-đun sao lưu',
     'BreadcrumbModuleBackupcreate' => 'Sao lưu',
     'bkp_Mode' => 'Giao thức',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
