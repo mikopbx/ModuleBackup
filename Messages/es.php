@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Puerto del servidor FTP no especificado',
     'bkp_ValidateHostEmpty' => 'Dirección del servidor FTP no especificada',
     'bkp_FTPSettings' => 'Servidor FTP / SFTP para almacenar copias de seguridad',
-    'bkp_FTPMode' => 'Modo FTP',
-    'bkp_SFTPMode' => 'Modo SFTP',
+    'bkp_FTPMode' => 'ftp',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Ruta del servidor',
     'bkp_FTPSecret' => 'Contraseña',
     'bkp_FTPUsername' => 'Nombre de usuario',
@@ -57,4 +57,5 @@ return [
  */
     'BreadcrumbModuleBackup' => 'Módulo de respaldo',
     'bkp_Mode' => 'Protocolo',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
