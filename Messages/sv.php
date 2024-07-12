@@ -22,8 +22,8 @@ return [
     'bkp_ValidatePortEmpty' => 'FTP-serverport har inte angetts',
     'bkp_ValidateHostEmpty' => 'FTP-serveradress har inte angetts',
     'bkp_FTPSettings' => 'FTP / SFTP-server för lagring av säkerhetskopior',
-    'bkp_FTPMode' => 'FTP-läge',
-    'bkp_SFTPMode' => 'SFTP-läge',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Serversökväg',
     'bkp_FTPUsername' => 'användarnamn',
     'bkp_FTPPort' => 'Hamn',
@@ -57,4 +57,5 @@ return [
     'bkp_FTPSecret' => 'lösenord',
     'BreadcrumbModuleBackupcreate' => 'Säkerhetskopiering',
     'bkp_Mode' => 'Protokoll',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
