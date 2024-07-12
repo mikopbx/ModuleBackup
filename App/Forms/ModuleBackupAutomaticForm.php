@@ -52,11 +52,9 @@ class ModuleBackupAutomaticForm extends Form
                     $this->add($action);
                     break;
                 case 'ftp_sftp_mode':
-                    // Library
                     $arrConnType = [
-                        '1' => $this->translation->_('bkp_SFTP_MODE'),
-                        '0' => $this->translation->_('bkp_FTP_MODE'),
-                        '3' => $this->translation->_('bkp_WebDav_MODE'),
+                        '1' => $this->translation->_('bkp_SFTPMode'),
+                        '3' => $this->translation->_('bkp_WebDavMode'),
                     ];
                     $library = new Select(
                         $key, $arrConnType, [

@@ -10,7 +10,7 @@ namespace Modules\ModuleBackup\Lib;
 
 use Exception;
 use MikoPBX\PBXCoreREST\Lib\PBXApiResult;
-use MikoPBX\Core\System\{Processes, Storage, System, Util};
+use MikoPBX\Core\System\{Directories, Processes, Storage, System, Util};
 use MikoPBX\Modules\PbxExtensionBase;
 use Modules\ModuleBackup\Models\BackupRules;
 use Phalcon\Di;
@@ -58,12 +58,11 @@ class Backup extends PbxExtensionBase
 
         $this->dirs_mem = self::getAsteriskDirsMem();
         // Проверим особенность бекапа на сетевой диск.
-        $duPath      = Util::which('du');
-        $busyboxPath = Util::which('busybox');
-        $awkPath     = Util::which('awk');
+        $du      = Util::which('du');
+        $awk     = Util::which('awk');
 
         Processes::mwExec(
-            "{$duPath} /storage/*/{$id}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+            "$du /storage/*/{$id}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
             $out
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
@@ -248,11 +247,10 @@ class Backup extends PbxExtensionBase
             // Бекап выполнялся на диск - хранилище
             $path_b_dir = "{$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/{$data['dir_name']}";
         }
-        $duPath      = Util::which('du');
-        $busyboxPath = Util::which('busybox');
-        $awkPath     = Util::which('awk');
+        $du      = Util::which('du');
+        $awk     = Util::which('awk');
         Processes::mwExec(
-            "{$duPath} {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+            "$du {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
             $out
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
@@ -262,7 +260,7 @@ class Backup extends PbxExtensionBase
 
         if ( ! file_exists($path_b_dir)) {
             Processes::mwExec(
-                "{$duPath} {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'",
+                "$du {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
                 $out
             );
             if (($out[0] ?? false) && file_exists($out[0])) {
@@ -274,15 +272,15 @@ class Backup extends PbxExtensionBase
                 }
             }
         }
-        $cpPath = Util::which('cp');
-        $resMwExec    = Processes::mwExec("{$cpPath} {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
+        $cp = Util::which('cp');
+        $resMwExec    = Processes::mwExec("$cp {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
 
-        $umountPath = Util::which('umount');
-        Processes::mwExec("{$umountPath} {$data['res_file']}");
+        $umount = Util::which('umount');
+        Processes::mwExec("$umount {$data['res_file']}");
         if (isset($res->data['new_id'])) {
-            $mvPath           = Util::which('mv');
+            $mv           = Util::which('mv');
             $resMwExec              = Processes::mwExec(
-                "{$mvPath} {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
+                "$mv {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
             );
             $data['dir_name'] = $res->data['new_id'];
         }
@@ -348,37 +346,36 @@ class Backup extends PbxExtensionBase
      */
     public static function staticExtractFile($id, $arh, $filename): void
     {
-        $umountPath  = Util::which('umount');
-        $mountPath   = Util::which('mount');
-        $cpPath      = Util::which('cp');
-        $mvPath      = Util::which('mv');
-        $duPath      = Util::which('du');
-        $sevenZaPath = Util::which('7za');
-        $grepPath    = Util::which('grep');
-        $awkPath     = Util::which('awk');
-        $busyboxPath = Util::which('busybox');
+        $umount  = Util::which('umount');
+        $mount   = Util::which('mount');
+        $cp      = Util::which('cp');
+        $mv      = Util::which('mv');
+        $du      = Util::which('du');
+        $sevenZa = Util::which('7za');
+        $grep    = Util::which('grep');
+        $awk     = Util::which('awk');
 
         $type = Util::getExtensionOfFile($arh);
         if ($type === self::ARH_TYPE_IMG) {
             $result_dir = basename($arh) . '/mnt_point';
             if ( ! Storage::diskIsMounted($arh, '')) {
-                Processes::mwExec("{$mountPath} -o loop {$arh} {$result_dir}");
+                Processes::mwExec("{$mount} -o loop {$arh} {$result_dir}");
             }
-            Processes::mwExec("{$duPath} /storage/*/{$id} -d 0 2> /dev/null | {$busyboxPath} {$awkPath} '{print $2}'", $out);
+            Processes::mwExec("$du /storage/*/{$id} -d 0 2> /dev/null | $awk '{print $2}'", $out);
             if (($out[0] ?? false) && file_exists($out[0])) {
                 $src_file = $out[0];
             } else {
                 $src_file = "{$result_dir}{$filename}";
             }
-            Processes::mwExec("{$cpPath} '{$src_file}' '{$filename}'", $arr_out);
-            Processes::mwExec("{$umountPath} $arh");
+            Processes::mwExec("$cp '{$src_file}' '{$filename}'", $arr_out);
+            Processes::mwExec("$umount $arh");
         } else {
-            Processes::mwExec("{$sevenZaPath} e -y -r -spf {$arh} {$filename}");
+            Processes::mwExec("$sevenZa e -y -r -spf {$arh} {$filename}");
             if ( ! file_exists($filename)) {
                 $command_status = Processes::mwExec(
-                    "{$sevenZaPath} l {$arh} | {$grepPath} '" . basename(
+                    "$sevenZa l {$arh} | {$grep} '" . basename(
                         $filename
-                    ) . "' | {$busyboxPath} {$awkPath} '{print $6}'",
+                    ) . "' | $awk '{print $6}'",
                     $out
                 );
                 if ($command_status === 0) {
@@ -388,8 +385,8 @@ class Backup extends PbxExtensionBase
                     Util::mwMkdir($file_dir);
                     $file_dir = dirname($filename);
                     Util::mwMkdir($file_dir);
-                    Processes::mwExec("{$sevenZaPath} e -y -r -spf {$arh} {$path_to_file}");
-                    Processes::mwExec("{$mvPath} $path_to_file $filename");
+                    Processes::mwExec("$sevenZa e -y -r -spf {$arh} {$path_to_file}");
+                    Processes::mwExec("$mv $path_to_file $filename");
                 }
             }
         }
@@ -521,8 +518,8 @@ class Backup extends PbxExtensionBase
         }
 
         $BackupRules = BackupRules::find('enabled="1"');
-        foreach ($BackupRules as $res) {
-            $b_dir = self::getMountPath($res)."/{$id}";
+        foreach ($BackupRules as $rule) {
+            $b_dir = self::getMountPath($rule)."/{$id}";
             if (file_exists($b_dir)) {
                 $b_dirs[] = $b_dir;
             }
@@ -772,7 +769,7 @@ class Backup extends PbxExtensionBase
         $disk_mounted       = Storage::isStorageDiskMounted("$backup_dir ");
         if ( !$disk_mounted) {
             if ($first_by_id->ftp_sftp_mode === '1') {
-                $disk_mounted = Storage::mountSftpDisk(
+                $disk_mounted = self::mountSftpDisk(
                     $first_by_id->ftp_host,
                     $first_by_id->ftp_port,
                     $first_by_id->ftp_username,
@@ -781,7 +778,7 @@ class Backup extends PbxExtensionBase
                     $backup_dir
                 );
             } elseif ($first_by_id->ftp_sftp_mode === '3') {
-                $disk_mounted = Storage::mountWebDav(
+                $disk_mounted = self::mountWebDav(
                     $first_by_id->ftp_host,
                     $first_by_id->ftp_username,
                     $first_by_id->ftp_secret,
@@ -789,7 +786,7 @@ class Backup extends PbxExtensionBase
                     $backup_dir
                 );
             } else {
-                $disk_mounted = Storage::mountFtp(
+                $disk_mounted = self::mountFtp(
                     $first_by_id->ftp_host,
                     $first_by_id->ftp_port,
                     $first_by_id->ftp_username,
@@ -805,6 +802,146 @@ class Backup extends PbxExtensionBase
         }
         $res->success = true;
         return $res;
+    }
+
+    /**
+     * Mount an SFTP disk.
+     *
+     * @param string $host The SFTP server host.
+     * @param string $port The SFTP server port.
+     * @param string $user The SFTP server username.
+     * @param string $pass The SFTP server password.
+     * @param string $remote_dir The remote directory on the SFTP server.
+     * @param string $local_dir The local directory to mount the SFTP disk.
+     * @return bool Returns true if the SFTP disk is successfully mounted, false otherwise.
+     */
+    public static function mountSftpDisk(string $host, string $port, string $user, string $pass, string $remote_dir, string $local_dir): bool
+    {
+        // Create the local directory if it doesn't exist
+        Util::mwMkdir($local_dir);
+
+        $out = [];
+        $timeoutPath = Util::which('timeout');
+        $sshfsPath   = Util::which('sshfs');
+
+        // Build the command to mount the SFTP disk
+        $command = "$timeoutPath 3 $sshfsPath -p $port -o password_stdin -o 'StrictHostKeyChecking=no' " . "$user@$host:$remote_dir $local_dir << EOF\n" . "$pass\n" . "EOF\n";
+
+        // Execute the command to mount the SFTP disk
+        Processes::mwExec($command, $out);
+        $response = trim(implode('', $out));
+
+        if ('Terminated' === $response) {
+            // The remote server did not respond or an incorrect password was provided.
+            unset($response);
+        }
+
+        return Storage::isStorageDiskMounted("$local_dir ");
+    }
+
+    /**
+     * Mount an FTP disk.
+     *
+     * @param string $host The FTP server host.
+     * @param string $port The FTP server port.
+     * @param string $user The FTP server username.
+     * @param string $pass The FTP server password.
+     * @param string $remote_dir The remote directory on the FTP server.
+     * @param string $local_dir The local directory to mount the FTP disk.
+     * @return bool Returns true if the FTP disk is successfully mounted, false otherwise.
+     */
+    public static function mountFtp(string $host, string $port, string $user, string $pass, string $remote_dir, string $local_dir): bool
+    {
+
+        // Create the local directory if it doesn't exist
+        Util::mwMkdir($local_dir);
+        $out = [];
+
+        // Build the authentication line for the FTP connection
+        $auth_line = '';
+        if (!empty($user)) {
+            $auth_line .= 'user="' . $user;
+            if (!empty($pass)) {
+                $auth_line .= ":$pass";
+            }
+            $auth_line .= '",';
+        }
+
+        // Build the connect line for the FTP connection
+        $connect_line = 'ftp://' . $host;
+        if (!empty($port)) {
+            $connect_line .= ":$port";
+        }
+        if (!empty($remote_dir)) {
+            $connect_line .= $remote_dir;
+        }
+
+        $timeoutPath = Util::which('timeout');
+        $curlftpfsPath = Util::which('curlftpfs');
+
+        // Build the command to mount the FTP disk
+        $command = "$timeoutPath 3 $curlftpfsPath  -o allow_other -o {$auth_line}fsname=$host $connect_line $local_dir";
+
+        // Execute the command to mount the FTP disk
+        Processes::mwExec($command, $out);
+        $response = trim(implode('', $out));
+        if ('Terminated' === $response) {
+            // The remote server did not respond or an incorrect password was provided.
+            unset($response);
+        }
+
+        return Storage::isStorageDiskMounted("$local_dir ");
+    }
+
+    /**
+     * Mount a WebDAV disk.
+     *
+     * @param string $host The WebDAV server host.
+     * @param string $user The WebDAV server username.
+     * @param string $pass The WebDAV server password.
+     * @param string $dstDir The destination directory on the WebDAV server.
+     * @param string $local_dir The local directory to mount the WebDAV disk.
+     * @return bool Returns true if the WebDAV disk is successfully mounted, false otherwise.
+     */
+    public static function mountWebDav(string $host, string $user, string $pass, string $dstDir, string $local_dir): bool
+    {
+        $host = trim($host);
+        $dstDir = trim($dstDir);
+
+        // Remove trailing slash from host if present
+        if (substr($host, -1) === '/') {
+            $host = substr($host, 0, -1);
+        }
+
+        // Remove leading slash from destination directory if present
+        if ($dstDir[0] === '/') {
+            $dstDir = substr($dstDir, 1);
+        }
+
+        // Create the local directory if it doesn't exist
+        Util::mwMkdir($local_dir);
+        $out = [];
+        $conf = 'dav_user www' . PHP_EOL .
+            'dav_group www' . PHP_EOL;
+
+
+        // Write WebDAV credentials to secrets file
+        file_put_contents('/etc/davfs2/secrets', "$host/$dstDir $user $pass");
+        file_put_contents('/etc/davfs2/davfs2.conf', $conf);
+        $timeoutPath = Util::which('timeout');
+        $mount = Util::which('mount.davfs');
+
+        // Build the command to mount the WebDAV disk
+        $command = "$timeoutPath 3 yes | $mount $host/$dstDir $local_dir";
+
+        // Execute the command to mount the WebDAV disk
+        Processes::mwExec($command, $out);
+        $response = trim(implode('', $out));
+        if ('Terminated' === $response) {
+            // The remote server did not respond or an incorrect password was provided.
+            unset($response);
+        }
+        return Storage::isStorageDiskMounted("$local_dir ");
     }
 
     /**
@@ -1413,12 +1550,7 @@ class Backup extends PbxExtensionBase
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
         $res->success = true;
-        $di     = Di::getDefault();
-        if ($di !== null){
-            $tempDir = $di->getConfig()->path('core.tempDir');
-        } else {
-            $tempDir = '/tmp';
-        }
+        $tempDir = Directories::getDir(Directories::CORE_TEMP_DIR);
         if (empty($config_file)) {
             $config_file = "{$tempDir}/old_config.xml";
         }
