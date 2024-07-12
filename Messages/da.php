@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'FTP-serverport ikke angivet',
     'bkp_ValidateHostEmpty' => 'FTP-serveradresse ikke angivet',
     'bkp_FTPSettings' => 'FTP / SFTP-server til lagring af sikkerhedskopier',
-    'bkp_FTPMode' => 'FTP-tilstand',
-    'bkp_SFTPMode' => 'SFTP-tilstand',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Serversti',
     'bkp_FTPSecret' => 'adgangskode',
     'bkp_FTPUsername' => 'brugernavn',
@@ -57,4 +57,5 @@ return [
     'BreadcrumbModuleBackup' => 'Backup modul',
     'SubHeaderModuleBackup' => 'Kopier til FTP / SFTP på en tidsplan, gendannelse fra ZIP, IMG',
     'bkp_Mode' => 'Protokol',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
