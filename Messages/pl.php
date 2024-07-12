@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Nie określono portu serwera FTP',
     'bkp_ValidateHostEmpty' => 'Nie określono adresu serwera FTP',
     'bkp_FTPSettings' => 'Serwer FTP / SFTP do przechowywania kopii zapasowych',
-    'bkp_FTPMode' => 'Tryb FTP',
-    'bkp_SFTPMode' => 'Tryb SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPSecret' => 'Hasło',
     'bkp_FTPUsername' => 'Nazwa użytkownika',
     'bkp_FTPPort' => 'Port',
@@ -57,4 +57,5 @@ return [
     'bkp_FTPPath' => 'Ścieżka serwera',
     'bkp_backup-config' => 'Ustawienia centrali PBX',
     'bkp_Mode' => 'Protokół',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
