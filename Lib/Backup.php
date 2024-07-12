@@ -518,8 +518,8 @@ class Backup extends PbxExtensionBase
         }
 
         $BackupRules = BackupRules::find('enabled="1"');
-        foreach ($BackupRules as $res) {
-            $b_dir = self::getMountPath($res)."/{$id}";
+        foreach ($BackupRules as $rule) {
+            $b_dir = self::getMountPath($rule)."/{$id}";
             if (file_exists($b_dir)) {
                 $b_dirs[] = $b_dir;
             }
