@@ -27,8 +27,8 @@ return [
     'bkp_FTPUsername' => 'Gebruikersnaam',
     'bkp_FTPPath' => 'Pad op de server',
     'bkp_FTPSecret' => 'Wachtwoord',
-    'bkp_SFTPMode' => 'SFTP-modus',
-    'bkp_FTPMode' => 'FTP-modus',
+    'bkp_SFTPMode' => 'SFTP',
+    'bkp_FTPMode' => 'FTP',
     'bkp_FTPSettings' => 'FTP/SFTP-server voor het opslaan van back-ups',
     'bkp_ValidatePortEmpty' => 'FTP-serverpoort niet gespecificeerd',
     'bkp_KeepOlderVersions' => 'Bewaar de nieuwste X-versies',
@@ -57,4 +57,5 @@ return [
     'bkp_backup-sound-files' => 'Geluidsbestanden',
     'bkp_backup-cdr' => 'Gespreksgeschiedenis',
     'bkp_ValidateHostEmpty' => 'FTP-serveradres niet opgegeven',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
