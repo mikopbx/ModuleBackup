@@ -22,8 +22,8 @@ return [
     'bkp_ValidatePortEmpty' => 'FTP sunucusu bağlantı noktası belirtilmedi',
     'bkp_ValidateHostEmpty' => 'FTP sunucu adresi belirtilmedi',
     'bkp_FTPSettings' => 'Yedekleri depolamak için FTP / SFTP sunucusu',
-    'bkp_FTPMode' => 'FTP modu',
-    'bkp_SFTPMode' => 'SFTP modu',
+    'bkp_FTPMode' => 'FTP\'de',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'sunucu yolu',
     'bkp_FTPSecret' => 'şifre',
     'bkp_FTPUsername' => 'kullanıcı adı',
@@ -57,4 +57,5 @@ return [
     'bkp_Restore' => 'Tamam',
     'bkp_EveryDay' => 'Günlük',
     'bkp_Mode' => 'Protokol',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
