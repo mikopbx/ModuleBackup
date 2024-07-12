@@ -22,8 +22,8 @@ return [
     'bkp_ValidatePortEmpty' => '未指定 FTP 服务器端口',
     'bkp_ValidateHostEmpty' => '未指定 FTP 服务器地址',
     'bkp_FTPSettings' => '用于存储备份的 FTP / SFTP 服务器',
-    'bkp_FTPMode' => 'FTP方式',
-    'bkp_SFTPMode' => 'SFTP模式',
+    'bkp_FTPMode' => '文件传输协议',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => '服务器路径',
     'bkp_FTPSecret' => '密码',
     'bkp_FTPUsername' => '用户名',
@@ -57,4 +57,5 @@ return [
     'BreadcrumbModuleBackup' => '备份模块',
     'bkp_DeleteFiles' => '删除备份文件',
     'bkp_Mode' => '协议',
+    'bkp_WebDavMode' => '网络DAV',
 ];
