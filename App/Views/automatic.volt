@@ -1,4 +1,4 @@
-{{ form('module-backup/automatic', 'role': 'form', 'class': 'ui form large', 'id':'backup-automatic-form') }}
+<form method="post" action="module-backup/automatic" class="ui form large" id="backup-automatic-form">
 <div class="ui segment">
     <div class="field">
         <div class="ui toggle checkbox" id="enable-disable-toggle">

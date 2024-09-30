@@ -17,7 +17,7 @@
 </div>
 
 <div class="ui header">{{ t._('bkp_RestoreBackupHeader') }}</div>
-{{ form('module-backup/restore', 'role': 'form', 'class': 'ui form large', 'id':'backup-restore-form') }}
+<form method="post" action="module-backup/restore" class="ui form large" id="backup-restore-form">
 <div class="field">
     <div class="ui indicating progress" id="restore-progress-bar">
         <div class="bar">
