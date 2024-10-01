@@ -20,7 +20,6 @@
 namespace Modules\ModuleBackup\Lib;
 
 use Exception;
-use MikoPBX\Common\Models\PbxSettings;
 use MikoPBX\PBXCoreREST\Lib\PBXApiResult;
 use MikoPBX\Core\System\{Directories, Processes, Storage, System, Util};
 use MikoPBX\Modules\PbxExtensionBase;
@@ -176,12 +175,7 @@ class Backup extends PbxExtensionBase
             return $res;
         }
         $backupDir         = self::getBackupDir();
-        $pbxVersion = PbxSettings::getValueByKey('PBXVersion');
-        if (version_compare($pbxVersion, '2024.2.30', '>')) {
-            $di     = \Phalcon\Di\Di::getDefault();
-        } else {
-            $di     = \Phalcon\Di::getDefault();
-        }
+        $di = MikoPBXVersion::getDefaultDi();
         if($di === null){
             $res->messages[] = "Can not create DI.";
             return $res;
@@ -349,12 +343,7 @@ class Backup extends PbxExtensionBase
      */
     public static function getBackupDir(): string
     {
-        $pbxVersion = PbxSettings::getValueByKey('PBXVersion');
-        if (version_compare($pbxVersion, '2024.2.30', '>')) {
-            $di     = \Phalcon\Di\Di::getDefault();
-        } else {
-            $di     = \Phalcon\Di::getDefault();
-        }
+        $di = MikoPBXVersion::getDefaultDi();
         return $di->getShared('config')->path('core.mediaMountPoint').'/mikopbx/backup';
     }
 
@@ -986,12 +975,7 @@ class Backup extends PbxExtensionBase
 
         $extension    = Util::getExtensionOfFile($filename);
         $uid          = Util::generateRandomString(36);
-        $pbxVersion = PbxSettings::getValueByKey('PBXVersion');
-        if (version_compare($pbxVersion, '2024.2.30', '>')) {
-            $di     = \Phalcon\Di\Di::getDefault();
-        } else {
-            $di     = \Phalcon\Di::getDefault();
-        }
+        $di = MikoPBXVersion::getDefaultDi();
         $downloadLink = $di->getShared('config')->path('www.downloadCacheDir');
 
         $result_dir = "{$downloadLink}/{$uid}";
@@ -1346,12 +1330,7 @@ class Backup extends PbxExtensionBase
         $res->processor = __METHOD__;
 
         $arr_size                       = [];
-        $pbxVersion = PbxSettings::getValueByKey('PBXVersion');
-        if (version_compare($pbxVersion, '2024.2.30', '>')) {
-            $di     = \Phalcon\Di\Di::getDefault();
-        } else {
-            $di     = \Phalcon\Di::getDefault();
-        }
+        $di = MikoPBXVersion::getDefaultDi();
         $dirsConfig                     = $di->getShared('config');
         $dirs                           = [
             'backup'           => self::getBackupDir(),

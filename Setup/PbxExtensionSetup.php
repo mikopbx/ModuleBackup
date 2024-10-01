@@ -21,6 +21,7 @@ namespace Modules\ModuleBackup\Setup;
 
 use MikoPBX\Common\Models\PbxSettings;
 use MikoPBX\Modules\Setup\PbxExtensionSetupBase;
+use Modules\ModuleBackup\Lib\MikoPBXVersion;
 
 class PbxExtensionSetup extends PbxExtensionSetupBase
 {
@@ -59,14 +60,8 @@ class PbxExtensionSetup extends PbxExtensionSetupBase
     public function addToSidebar(): bool
     {
         $menuSettingsKey           = "AdditionalMenuItem{$this->moduleUniqueID}";
-        $pbxVersion = PbxSettings::getValueByKey('PBXVersion');
-        if (version_compare($pbxVersion, '2024.2.30', '>')) {
-            $unCamelizedControllerName = \MikoPBX\Common\Library\Text::uncamelize($this->moduleUniqueID, '-');
-        } else {
-            $unCamelizedControllerName = \Phalcon\Text::uncamelize($this->moduleUniqueID, '-');
-        }
-
-
+        $textClass = MikoPBXVersion::getTextClass();
+        $unCamelizedControllerName = $textClass::uncamelize($this->moduleUniqueID, '-');
         $menuSettings              = PbxSettings::findFirstByKey($menuSettingsKey);
         if ($menuSettings === null) {
             $menuSettings      = new PbxSettings();
