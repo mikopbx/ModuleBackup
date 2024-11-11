@@ -49,8 +49,6 @@ class OldConfigConverter
             $client = new HtmlDocument();
             $this->resHtml = $client->load($xmlData);
         }
-
-
         $this->data     = [
             'm_Users'                     => [],
             'm_Sip'                       => [],

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "65d98b06732a8877a27bbb0c772c403e",
+    "content-hash": "eb78aff99b40810afe72cd4f3e67811e",
     "packages": [
         {
             "name": "simplehtmldom/simplehtmldom",
@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/simplehtmldom/simplehtmldom.git",
-                "reference": "31ce157e7ba0c6ca35f94faedf031a945c3f6427"
+                "reference": "b8d048e46b7f1964c28ea041d39ccb1d05f9a0ed"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/simplehtmldom/simplehtmldom/zipball/31ce157e7ba0c6ca35f94faedf031a945c3f6427",
-                "reference": "31ce157e7ba0c6ca35f94faedf031a945c3f6427",
+                "url": "https://api.github.com/repos/simplehtmldom/simplehtmldom/zipball/b8d048e46b7f1964c28ea041d39ccb1d05f9a0ed",
+                "reference": "b8d048e46b7f1964c28ea041d39ccb1d05f9a0ed",
                 "shasum": ""
             },
             "require": {
@@ -25,7 +25,10 @@
                 "php": ">=5.6"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6 || ^7"
+                "dealerdirect/phpcodesniffer-composer-installer": "*",
+                "phpcompatibility/php-compatibility": "^9",
+                "phpunit/phpunit": "^6 || ^7",
+                "squizlabs/php_codesniffer": "^2"
             },
             "suggest": {
                 "ext-curl": "Needed to support cURL downloads in class HtmlWeb",
@@ -40,8 +43,7 @@
                 ],
                 "exclude-from-classmap": [
                     "/example/",
-                    "/manual/",
-                    "/testcase/",
+                    "/docs/",
                     "/tests/",
                     "simple_html_dom.php"
                 ]
@@ -80,7 +82,7 @@
                 "source": "https://sourceforge.net/p/simplehtmldom/repository/",
                 "wiki": "https://simplehtmldom.sourceforge.io/docs/"
             },
-            "time": "2019-12-06T18:20:19+00:00"
+            "time": "2022-04-25T19:21:05+00:00"
         }
     ],
     "packages-dev": [],
@@ -91,10 +93,12 @@
     },
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
-    "platform-dev": [],
-    "platform-overrides": {
-        "php": "7.4.6"
+    "platform": {
+        "php": "8.0"
     },
-    "plugin-api-version": "2.1.0"
+    "platform-dev": {},
+    "platform-overrides": {
+        "php": "8.0"
+    },
+    "plugin-api-version": "2.6.0"
 }

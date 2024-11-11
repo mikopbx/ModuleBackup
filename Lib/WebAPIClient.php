@@ -21,6 +21,9 @@ namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Core\System\MikoPBXConfig;
 use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ConnectException;
 
 class WebAPIClient
 {
@@ -73,21 +76,36 @@ class WebAPIClient
      */
     private function postData(string $url, array $data, bool$is_login = false)
     {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-        $headers = [
-            'X-Requested-With: XMLHttpRequest',
-            'Content-Type: application/x-www-form-urlencoded',
-        ];
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $client = new Client(['timeout' => 10]);
+
         try {
-            $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
-            curl_close($ch);
-        }catch ( Exception $e){
-            $result = ['message' => $e->getMessage()];
+            $response = $client->post($url, [
+                'form_params' => $data,
+                'headers' => [
+                    'X-Requested-With' => 'XMLHttpRequest',
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ]
+            ]);
+
+            $raw = $response->getBody()->getContents();
+            $result = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+        } catch (ConnectException $e) {
+            $result = [
+                'message' => 'Connection error: ' . $e->getMessage(),
+            ];
+
+        } catch (RequestException $e) {
+            $result = [
+                'message' => 'Request error: ' . $e->getMessage(),
+                'response' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null,
+            ];
+
+        } catch (JsonException $e) {
+            $result = [
+                'message' => 'JSON decode error: ' . $e->getMessage(),
+                'raw' => isset($raw) ? $raw : null,
+            ];
         }
 
         return $result;
