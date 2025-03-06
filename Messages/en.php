@@ -31,8 +31,8 @@ return [
     'bkp_FTPUsername' => 'Username',
     'bkp_FTPSecret' => 'Password',
     'bkp_FTPPath' => 'The path on the server',
-    'bkp_SFTPMode' => 'SFTP mode',
-    'bkp_FTPMode' => 'FTP mode',
+    'bkp_SFTPMode' => 'SFTP',
+    'bkp_FTPMode' => 'FTP',
     'bkp_FTPSettings' => 'FTP/SFTP server for backup storage',
     'bkp_ValidateHostEmpty' => 'Do not specify the address of the FTP server',
     'bkp_ValidatePortEmpty' => 'Do not specify the port of the FTP server',
@@ -57,4 +57,5 @@ return [
     'bkp_CreateBackupAfterSaveSettings' => 'Start backup immediately after saving settings',
     'bkp_ErrorOnDownloadBackup' => 'Could not find backup file',
     'bkp_Mode' => 'Mode',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

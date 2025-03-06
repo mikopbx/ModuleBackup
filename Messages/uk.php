@@ -20,8 +20,8 @@ return [
     'bkp_KeepOlderVersions' => 'Залишати останні X версій',
     'bkp_ValidatePortEmpty' => 'Не вказано порт сервера FTP',
     'bkp_FTPSettings' => 'Сервер FTP/SFTP для зберігання резервних копій',
-    'bkp_FTPMode' => 'Режим FTP',
-    'bkp_SFTPMode' => 'Режим SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Шлях на сервері',
     'bkp_FTPSecret' => 'Пароль',
     'bkp_FTPUsername' => 'Ім\'я користувача',
@@ -57,4 +57,5 @@ return [
     'bkp_NoBackupRecordsAvailable' => 'Немає доступних архівних копій',
     'bkp_ValidateHostEmpty' => 'Не вказана адреса сервера FTP',
     'bkp_Mode' => 'Протокол',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

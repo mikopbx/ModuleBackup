@@ -21,8 +21,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Porta del server FTP non specificata',
     'bkp_ValidateHostEmpty' => 'Indirizzo del server FTP non specificato',
     'bkp_FTPSettings' => 'Server FTP/SFTP per l\'archiviazione dei backup',
-    'bkp_FTPMode' => 'Modalità FTP',
-    'bkp_SFTPMode' => 'Modalità SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Percorso del server',
     'bkp_FTPSecret' => 'password',
     'bkp_FTPUsername' => 'nome utente',
@@ -57,4 +57,5 @@ return [
     'bkp_ValidateTimeEmpty' => 'Il tempo di backup non è corretto',
     'bkp_FTPPort' => 'Porta',
     'bkp_Mode' => 'Protocollo',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

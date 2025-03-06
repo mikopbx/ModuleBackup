@@ -45,8 +45,8 @@ return [
     'bkp_FTPUsername' => 'Nume de utilizator',
     'bkp_FTPSecret' => 'Parola',
     'bkp_FTPPath' => 'Calea pe server',
-    'bkp_SFTPMode' => 'Modul SFTP',
-    'bkp_FTPMode' => 'Modul FTP',
+    'bkp_SFTPMode' => 'SFTP',
+    'bkp_FTPMode' => 'FTP',
     'bkp_FTPSettings' => 'Server FTP/SFTP pentru stocarea backup-urilor',
     'bkp_ValidateTimeEmpty' => 'Timpul de backup este incorect',
     'bkp_ValidateKeepVersionsEmpty' => 'Număr incorect de copii stocate',
@@ -57,4 +57,5 @@ return [
     'bkp_UploadInProgress' => 'Încărcarea unui fișier în PBX',
     'bkp_CreateBackupAfterSaveSettings' => 'Începeți să creați o copie imediat după salvarea setărilor',
     'bkp_ErrorOnDownloadBackup' => 'Nu s-a găsit fișierul de rezervă',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

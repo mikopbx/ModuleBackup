@@ -1,7 +1,7 @@
 <?php
 /*
  * MikoPBX - free phone system for small business
- * Copyright © 2017-2023 Alexey Portnov and Nikolay Beketov
+ * Copyright © 2017-2024 Alexey Portnov and Nikolay Beketov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,20 +17,13 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * Copyright © MIKO LLC - All Rights Reserved
- * Unauthorized copying of this file, via any medium is strictly prohibited
- * Proprietary and confidential
- * Written by Alexey Portnov, 2 2020
- */
-
 namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Common\Models\{CustomFiles, Extensions, ExternalPhones, NetworkFilters, PbxSettings};
 
+use MikoPBX\Core\System\MikoPBXConfig;
 use MikoPBX\Core\System\Network;
 use MikoPBX\Core\System\Verify;
-use phpseclib3\Math\BigInteger\Engines\PHP;
 use simplehtmldom\HtmlDocument;
 
 include_once __DIR__.'/../vendor/autoload.php';
@@ -56,8 +49,6 @@ class OldConfigConverter
             $client = new HtmlDocument();
             $this->resHtml = $client->load($xmlData);
         }
-
-
         $this->data     = [
             'm_Users'                     => [],
             'm_Sip'                       => [],

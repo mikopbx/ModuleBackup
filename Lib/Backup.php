@@ -1,9 +1,20 @@
 <?php
 /*
- * Copyright © MIKO LLC - All Rights Reserved
- * Unauthorized copying of this file, via any medium is strictly prohibited
- * Proprietary and confidential
- * Written by Alexey Portnov, 9 2020
+ * MikoPBX - free phone system for small business
+ * Copyright © 2017-2024 Alexey Portnov and Nikolay Beketov
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 
 namespace Modules\ModuleBackup\Lib;
@@ -13,7 +24,6 @@ use MikoPBX\PBXCoreREST\Lib\PBXApiResult;
 use MikoPBX\Core\System\{Directories, Processes, Storage, System, Util};
 use MikoPBX\Modules\PbxExtensionBase;
 use Modules\ModuleBackup\Models\BackupRules;
-use Phalcon\Di;
 
 class Backup extends PbxExtensionBase
 {
@@ -165,7 +175,7 @@ class Backup extends PbxExtensionBase
             return $res;
         }
         $backupDir         = self::getBackupDir();
-        $di                = Di::getDefault();
+        $di = MikoPBXVersion::getDefaultDi();
         if($di === null){
             $res->messages[] = "Can not create DI.";
             return $res;
@@ -333,7 +343,7 @@ class Backup extends PbxExtensionBase
      */
     public static function getBackupDir(): string
     {
-        $di = Di::getDefault();
+        $di = MikoPBXVersion::getDefaultDi();
         return $di->getShared('config')->path('core.mediaMountPoint').'/mikopbx/backup';
     }
 
@@ -920,10 +930,17 @@ class Backup extends PbxExtensionBase
 
         // Create the local directory if it doesn't exist
         Util::mwMkdir($local_dir);
+        $di = MikoPBXVersion::getDefaultDi();
+        $tmpDir = $di->getShared('config')->path('core.tempDir').'webdav-cache';
+        Util::mwMkdir($tmpDir, true);
+        $tmpDirBackUp = $di->getShared('config')->path('core.tempDir').'webdav-backup-cache';
+        Util::mwMkdir($tmpDirBackUp, true);
         $out = [];
-        $conf = 'dav_user www' . PHP_EOL .
-            'dav_group www' . PHP_EOL;
-
+        $conf = 'dav_user www'.PHP_EOL.
+                'dav_group www'.PHP_EOL.
+                'cache_size 50'.PHP_EOL.
+                "backup_dir $tmpDirBackUp".PHP_EOL.
+                "cache_dir $tmpDir".PHP_EOL;
 
         // Write WebDAV credentials to secrets file
         file_put_contents('/etc/davfs2/secrets', "$host/$dstDir $user $pass");
@@ -965,7 +982,7 @@ class Backup extends PbxExtensionBase
 
         $extension    = Util::getExtensionOfFile($filename);
         $uid          = Util::generateRandomString(36);
-        $di           = Di::getDefault();
+        $di = MikoPBXVersion::getDefaultDi();
         $downloadLink = $di->getShared('config')->path('www.downloadCacheDir');
 
         $result_dir = "{$downloadLink}/{$uid}";
@@ -1320,7 +1337,7 @@ class Backup extends PbxExtensionBase
         $res->processor = __METHOD__;
 
         $arr_size                       = [];
-        $di                             = Di::getDefault();
+        $di = MikoPBXVersion::getDefaultDi();
         $dirsConfig                     = $di->getShared('config');
         $dirs                           = [
             'backup'           => self::getBackupDir(),

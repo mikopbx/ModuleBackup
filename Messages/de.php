@@ -31,8 +31,8 @@ return [
     'bkp_FTPUsername' => 'Login/Benutzername',
     'bkp_FTPSecret' => 'Passwort',
     'bkp_FTPPath' => 'Der Datei-/Ordnerpfad auf dem Server',
-    'bkp_SFTPMode' => 'SFTP Modus',
-    'bkp_FTPMode' => 'FTP Modus',
+    'bkp_SFTPMode' => 'SFTP',
+    'bkp_FTPMode' => 'FTP',
     'bkp_FTPSettings' => 'FTP/SFTP Server als Sicherungs/Backup-Speicher',
     'bkp_ValidateHostEmpty' => 'FTP/SFTP Server-Adresse fehlt',
     'bkp_ValidatePortEmpty' => 'Port des FTP/SFTP Servers fehlt',
@@ -57,4 +57,5 @@ return [
     'bkp_CreateBackupAfterSaveSettings' => 'Starten Sie die Sicherung sofort nach dem Speichern der Einstellungen',
     'bkp_ErrorOnDownloadBackup' => 'Sicherungsdatei konnte nicht gefunden werden',
     'bkp_Mode' => 'Protokoll',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

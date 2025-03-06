@@ -32,8 +32,8 @@ return [
     'bkp_FTPUsername' => 'ชื่อผู้ใช้',
     'bkp_FTPSecret' => 'รหัสผ่าน',
     'bkp_FTPPath' => 'เส้นทางเซิร์ฟเวอร์',
-    'bkp_SFTPMode' => 'โหมด SFTP',
-    'bkp_FTPMode' => 'โหมดเอฟทีพี',
+    'bkp_SFTPMode' => 'เอสเอฟทีพี',
+    'bkp_FTPMode' => 'เอฟทีพี',
     'bkp_FTPSettings' => 'เซิร์ฟเวอร์ FTP/SFTP สำหรับจัดเก็บข้อมูลสำรอง',
     'bkp_ValidateHostEmpty' => 'ไม่ได้ระบุที่อยู่เซิร์ฟเวอร์ FTP',
     'bkp_ValidatePortEmpty' => 'ไม่ได้ระบุพอร์ตเซิร์ฟเวอร์ FTP',
@@ -57,4 +57,5 @@ return [
     'bkp_CreateBackupAfterSaveSettings' => 'เริ่มสร้างสำเนาทันทีหลังจากบันทึกการตั้งค่า',
     'bkp_ErrorOnDownloadBackup' => 'ไม่พบไฟล์สำรอง',
     'bkp_Mode' => 'มาตรการ',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

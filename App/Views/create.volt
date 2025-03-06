@@ -1,4 +1,4 @@
-{{ form('module-backup/create', 'role': 'form', 'class': 'ui form large', 'id':'backup-create-form') }}
+<form method="post" action="module-backup/create" class="ui form large" id="backup-create-form">
 <div class="ui header">{{ t._('bkp_CreateBackupHeader') }}</div>
  {% for key, toggle in whatBackup %}
      <div class="ui segment">

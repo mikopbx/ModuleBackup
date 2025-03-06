@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'FTP სერვერის პორტი არ არის მითითებული',
     'bkp_ValidateHostEmpty' => 'FTP სერვერის მისამართი არ არის მითითებული',
     'bkp_FTPSettings' => 'FTP / SFTP სერვერი სარეზერვო ასლების შესანახად',
-    'bkp_FTPMode' => 'FTP რეჟიმი',
-    'bkp_SFTPMode' => 'SFTP რეჟიმი',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'სერვერის გზა',
     'bkp_FTPSecret' => 'პაროლი',
     'bkp_FTPUsername' => 'მომხმარებლის სახელი',
@@ -57,4 +57,5 @@ return [
  */
     'BreadcrumbModuleBackup' => 'სარეზერვო მოდული',
     'bkp_Mode' => 'Ოქმი',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

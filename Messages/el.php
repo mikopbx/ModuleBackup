@@ -25,8 +25,8 @@ return [
     'bkp_FTPPort' => 'θύρα (Port)',
     'bkp_ValidateHostEmpty' => 'Η διεύθυνση διακομιστή FTP δεν έχει καθοριστεί',
     'bkp_FTPSettings' => 'Διακομιστής FTP/SFTP για αποθήκευση αντιγράφων ασφαλείας',
-    'bkp_FTPMode' => 'Λειτουργία SFTP',
-    'bkp_SFTPMode' => 'Λειτουργία SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Διεύθυνση στον διακομιστή',
     'bkp_FTPSecret' => 'Κωδικός πρόσβασης',
     'bkp_FTPUsername' => 'Όνομα χρήστη',
@@ -57,4 +57,5 @@ return [
  *
  */
     'BreadcrumbModuleBackup' => 'Εφεδρική μονάδα',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

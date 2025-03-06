@@ -21,8 +21,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Porta do servidor FTP não especificada',
     'bkp_ValidateHostEmpty' => 'Endereço do servidor FTP não especificado',
     'bkp_FTPSettings' => 'Servidor FTP / SFTP para armazenamento de backups',
-    'bkp_FTPMode' => 'Modo FTP',
-    'bkp_SFTPMode' => 'Modo SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Caminho do servidor',
     'bkp_FTPSecret' => 'Senha',
     'bkp_FTPUsername' => 'Nome de usuário',
@@ -57,4 +57,5 @@ return [
     'bkp_UploadError' => 'Falha ao carregar arquivo de backup',
     'SubHeaderModuleBackup' => 'Copiar para FTP / SFTP em uma programação, recuperação de ZIP, IMG',
     'bkp_Mode' => 'Protocolo',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

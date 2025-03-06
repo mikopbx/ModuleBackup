@@ -22,8 +22,8 @@ return [
     'bkp_ValidatePortEmpty' => 'Port serveru FTP není zadán',
     'bkp_ValidateHostEmpty' => 'Adresa FTP serveru nebyla zadána',
     'bkp_FTPSettings' => 'FTP / SFTP server pro ukládání záloh',
-    'bkp_FTPMode' => 'FTP režim',
-    'bkp_SFTPMode' => 'režim SFTP',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'Cesta k serveru',
     'bkp_FTPSecret' => 'Heslo',
     'bkp_FTPUsername' => 'Uživatelské jméno',
@@ -57,4 +57,5 @@ return [
     'bkp_RestoreError' => 'Obnovení archivu se nezdařilo',
     'bkp_CreateDate' => 'Datum archivace',
     'bkp_Mode' => 'Protokol',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

@@ -1,15 +1,29 @@
 <?php
-/**
- * Copyright © MIKO LLC - All Rights Reserved
- * Unauthorized copying of this file, via any medium is strictly prohibited
- * Proprietary and confidential
- * Written by Alexey Portnov, 2 2020
+/*
+ * MikoPBX - free phone system for small business
+ * Copyright © 2017-2024 Alexey Portnov and Nikolay Beketov
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 
 namespace Modules\ModuleBackup\Lib;
 
 use MikoPBX\Core\System\MikoPBXConfig;
 use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ConnectException;
 
 class WebAPIClient
 {
@@ -62,21 +76,36 @@ class WebAPIClient
      */
     private function postData(string $url, array $data, bool$is_login = false)
     {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-        $headers = [
-            'X-Requested-With: XMLHttpRequest',
-            'Content-Type: application/x-www-form-urlencoded',
-        ];
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $client = new Client(['timeout' => 10]);
+
         try {
-            $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
-            curl_close($ch);
-        }catch ( Exception $e){
-            $result = ['message' => $e->getMessage()];
+            $response = $client->post($url, [
+                'form_params' => $data,
+                'headers' => [
+                    'X-Requested-With' => 'XMLHttpRequest',
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ]
+            ]);
+
+            $raw = $response->getBody()->getContents();
+            $result = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+        } catch (ConnectException $e) {
+            $result = [
+                'message' => 'Connection error: ' . $e->getMessage(),
+            ];
+
+        } catch (RequestException $e) {
+            $result = [
+                'message' => 'Request error: ' . $e->getMessage(),
+                'response' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null,
+            ];
+
+        } catch (JsonException $e) {
+            $result = [
+                'message' => 'JSON decode error: ' . $e->getMessage(),
+                'raw' => isset($raw) ? $raw : null,
+            ];
         }
 
         return $result;

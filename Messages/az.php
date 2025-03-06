@@ -26,7 +26,7 @@ return [
     'bkp_FTPSecret' => 'parol',
     'bkp_FTPPath' => 'Serverdə yol',
     'bkp_ValidateHostEmpty' => 'FTP server ünvanı göstərilməyib',
-    'bkp_FTPMode' => 'FTP rejimi',
+    'bkp_FTPMode' => 'FTP',
     'bkp_FTPSettings' => 'Ehtiyat nüsxələri saxlamaq üçün FTP/SFTP serveri',
     'bkp_ValidatePortEmpty' => 'FTP server portu göstərilməyib',
     'bkp_KeepOlderVersions' => 'Ən son X versiyalarını saxlayın',
@@ -49,7 +49,7 @@ return [
     'bkp_CreateBackupAutomatic' => 'Yedəkləmə cədvəli',
     'bkp_backup-config' => 'PBX Parametrləri',
     'bkp_RestoreMessage' => 'Siz ehtiyat fayldan (ZIP və ISO formatı) istifadə edə və ya köhnə Askozia PBX-dən (XML formatı) parametrləri yükləyə bilərsiniz.',
-    'bkp_SFTPMode' => 'SFTP rejimi',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_NoBackupRecordsAvailable' => 'Arxiv nüsxələri mövcud deyil',
     'bkp_RestoreError' => 'Arxivi bərpa etmək mümkün deyil',
     'bkp_UploadProcessingFiles' => 'Faylın emalı',
@@ -57,4 +57,5 @@ return [
     'bkp_CreateBackupAfterSaveSettings' => 'Parametrləri saxladıqdan dərhal sonra surət yaratmağa başlayın',
     'bkp_ErrorOnDownloadBackup' => 'Yedək faylı tapmaq alınmadı',
     'bkp_Mode' => 'Protokol',
+    'bkp_WebDavMode' => 'WebDAV',
 ];

@@ -23,8 +23,8 @@ return [
     'bkp_ValidatePortEmpty' => 'FTPサーバーのポートが指定されていません',
     'bkp_ValidateHostEmpty' => 'FTPサーバーアドレスが指定されていません',
     'bkp_FTPSettings' => 'バックアップを保存するためのFTP / SFTPサーバー',
-    'bkp_FTPMode' => 'FTPモード',
-    'bkp_SFTPMode' => 'SFTPモード',
+    'bkp_FTPMode' => 'FTP',
+    'bkp_SFTPMode' => 'SFTP',
     'bkp_FTPPath' => 'サーバーパス',
     'bkp_FTPSecret' => 'パスワード',
     'bkp_FTPUsername' => 'ユーザー名',
@@ -57,4 +57,5 @@ return [
     'BreadcrumbModuleBackup' => 'バックアップモジュール',
     'bkp_backup-config' => 'PBX設定',
     'bkp_Mode' => 'プロトコル',
+    'bkp_WebDavMode' => 'WebDAV',
 ];
