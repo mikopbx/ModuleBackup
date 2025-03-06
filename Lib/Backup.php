@@ -930,10 +930,17 @@ class Backup extends PbxExtensionBase
 
         // Create the local directory if it doesn't exist
         Util::mwMkdir($local_dir);
+        $di = MikoPBXVersion::getDefaultDi();
+        $tmpDir = $di->getShared('config')->path('core.tempDir').'webdav-cache';
+        Util::mwMkdir($tmpDir, true);
+        $tmpDirBackUp = $di->getShared('config')->path('core.tempDir').'webdav-backup-cache';
+        Util::mwMkdir($tmpDirBackUp, true);
         $out = [];
-        $conf = 'dav_user www' . PHP_EOL .
-            'dav_group www' . PHP_EOL;
-
+        $conf = 'dav_user www'.PHP_EOL.
+                'dav_group www'.PHP_EOL.
+                'cache_size 50'.PHP_EOL.
+                "backup_dir $tmpDirBackUp".PHP_EOL.
+                "cache_dir $tmpDir".PHP_EOL;
 
         // Write WebDAV credentials to secrets file
         file_put_contents('/etc/davfs2/secrets', "$host/$dstDir $user $pass");
