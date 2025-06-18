@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "eb78aff99b40810afe72cd4f3e67811e",
+    "content-hash": "f18a83051b8de127b6d31d5f87b1da55",
     "packages": [
         {
             "name": "simplehtmldom/simplehtmldom",
@@ -94,11 +94,11 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "8.0"
+        "php": "7.4"
     },
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.0"
+        "php": "7.4"
     },
     "plugin-api-version": "2.6.0"
 }
