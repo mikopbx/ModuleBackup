@@ -3,7 +3,7 @@
         'name' => 'mikopbx/modulebackup',
         'pretty_version' => 'dev-develop',
         'version' => 'dev-develop',
-        'reference' => 'a1148421d8b782167da32e1d9fcd07a3a82f861f',
+        'reference' => '17f7e013e17cd607006291e5c49585ff47f981aa',
         'type' => 'application',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'mikopbx/modulebackup' => array(
             'pretty_version' => 'dev-develop',
             'version' => 'dev-develop',
-            'reference' => 'a1148421d8b782167da32e1d9fcd07a3a82f861f',
+            'reference' => '17f7e013e17cd607006291e5c49585ff47f981aa',
             'type' => 'application',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -2,7 +2,7 @@
     "name": "mikopbx/modulebackup",
     "description": "ModuleBackup",
     "require": {
-        "php": "8.0",
+        "php": "7.4",
         "simplehtmldom/simplehtmldom": "dev-master"
     },
     "autoload": {
@@ -57,7 +57,7 @@
     "config": {
         "sort-packages": true,
         "platform": {
-            "php": "8.0"
+            "php": "7.4"
         }
     }
 }
