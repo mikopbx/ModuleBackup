@@ -57,6 +57,13 @@ class WorkerBackup extends WorkerBase
                     return;
                 }
                 $backup_dir   = Backup::getMountPath($res);
+
+                // Проверяем, не является ли удалённый сервер текущей машиной.
+                if (Backup::isRemoteLocalhost($backup_dir)) {
+                    Util::sysLogMsg('Backup', 'Remote server is localhost, skipping scheduled backup.', LOG_WARNING);
+                    return;
+                }
+
                 // Удаляем старые резервные копии, если необходимо.
                 if ($res->keep_older_versions > 0) {
                     $out      = [];

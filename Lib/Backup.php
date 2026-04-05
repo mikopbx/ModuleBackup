@@ -804,20 +804,35 @@ class Backup extends PbxExtensionBase
      * @param        $backup
      * @return bool
      */
+    /**
+     * Проверяет, не является ли удалённый FUSE-маунт локальным диском.
+     * Записывает тестовый файл на маунт и проверяет, появился ли он локально.
+     *
+     * @param string $remoteMountDir — путь к FUSE-маунту (/storage/{hash})
+     * @return bool true если это localhost
+     */
+    public static function isRemoteLocalhost(string $remoteMountDir): bool
+    {
+        $localBackupDir = self::getBackupDir();
+        return self::ftpIsLocalhost($remoteMountDir, $localBackupDir);
+    }
+
     private static function ftpIsLocalhost(string $backup_dir, $backup): bool{
         $ftpIsLocalhost = false;
-        $test_data = md5(time());
-        file_put_contents("{$backup_dir}/test.tmp", $test_data);
-        if (file_exists("{$backup}/test.tmp")) {
-            $test_data_res = file_get_contents("{$backup}/test.tmp");
-            if ($test_data_res === $test_data) {
-                unlink("{$backup_dir}/test.tmp");
-                // Это локальный диск подключен по SFTP. Не нужно обрабатывать.
+        $test_data = md5(time() . getmypid());
+        $testFile = "{$backup_dir}/localhost_test_" . getmypid() . ".tmp";
+        @file_put_contents($testFile, $test_data);
+
+        // Проверяем появился ли файл в локальном каталоге бекапов.
+        $localTestFile = str_replace($backup_dir, $backup, $testFile);
+        if ($localTestFile !== $testFile && file_exists($localTestFile)) {
+            $localData = @file_get_contents($localTestFile);
+            if ($localData === $test_data) {
                 $ftpIsLocalhost = true;
             }
         }
-        // Чистим временный файл.
-        unlink("{$backup_dir}/test.tmp");
+        // Чистим тестовый файл.
+        @unlink($testFile);
         return $ftpIsLocalhost;
     }
     /**
@@ -1685,9 +1700,13 @@ class Backup extends PbxExtensionBase
             }
         }
         if (($this->options['backup-records'] ?? '') === '1') {
-            Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name '*.mp3'", $out);
-            foreach ($out as $filename) {
-                $flist .= 'backup-records:' . $filename . "\n";
+            if ($this->remote) {
+                // Записи разговоров бекапим только на удалённый сервер.
+                // Локально это бессмысленно — файлы уже на этом же диске.
+                Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name '*.mp3'", $out);
+                foreach ($out as $filename) {
+                    $flist .= 'backup-records:' . $filename . "\n";
+                }
             }
         }
         file_put_contents($this->file_list, $flist, FILE_APPEND);
