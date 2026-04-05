@@ -1,6 +1,7 @@
 <form method="post" action="module-backup/create" class="ui form large" id="backup-create-form">
 <div class="ui header">{{ t._('bkp_CreateBackupHeader') }}</div>
  {% for key, toggle in whatBackup %}
+     {% if key != 'backup-records' %}
      <div class="ui segment">
          <div class="field">
              <div class="ui toggle checkbox backup-options">
@@ -9,6 +10,7 @@
              </div>
          </div>
      </div>
+     {% endif %}
  {% endfor %}
 <div class="field">
     <div class="ui indicating progress" id="backup-progress-bar">
