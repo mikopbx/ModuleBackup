@@ -1214,13 +1214,12 @@ class Backup extends PbxExtensionBase
                 $storage = new Storage();
                 $freeSpaceData = $storage->getAllHdd();
             }
-            $mountPoint = '';
-            Storage::isStorageDiskMounted('', $mountPoint);
-            // mountPoint может содержать несколько путей (основной + FUSE-маунты).
-            $mountPoint = trim(explode("\n", trim($mountPoint))[0]);
+            // Ищем основной storage-диск (реальная FS, не FUSE/tmpfs).
             foreach ($freeSpaceData as $storageData){
-                if(trim($storageData['mounted']) === $mountPoint){
+                $mounted = trim($storageData['mounted'] ?? '');
+                if (strpos($mounted, '/storage/usbdisk') === 0) {
                     $freeSpace = intval($storageData['free_space']);
+                    break;
                 }
             }
         }
