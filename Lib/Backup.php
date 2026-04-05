@@ -1222,12 +1222,33 @@ class Backup extends PbxExtensionBase
         while ($this->progress < $count_files) {
             $filename_data = trim($lines[$this->progress]);
             if (strpos($filename_data, ':') === false) {
+                $section  = '';
                 $filename = $filename_data;
             } else {
-                $filename = (explode(':', $filename_data))[1];
+                $parts    = explode(':', $filename_data, 2);
+                $section  = $parts[0];
+                $filename = $parts[1] ?? '';
             }
 
             $this->progress++;
+
+            if ($filename === '') {
+                continue;
+            }
+
+            // Сжатые архивы модулей — добавляем как один файл и удаляем tmp.
+            if ($section === 'backup-module-archive') {
+                if (!empty($batchFiles)) {
+                    $this->addBatchToArchive($batchFiles);
+                    $batchFiles = [];
+                }
+                $this->addModuleArchiveToBackup($filename);
+                if (file_exists($filename)) {
+                    unlink($filename);
+                }
+                file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
+                continue;
+            }
 
             if (is_dir($filename) || !file_exists($filename)) {
                 continue;
@@ -1271,6 +1292,162 @@ class Backup extends PbxExtensionBase
     }
 
     /**
+     * Собирает файлы модулей для бекапа.
+     * Каждый модуль (каталог с module.json) сжимается в .tar.gz (без содержимого db/).
+     * DB-файлы модулей записываются отдельно для обработки через .backup + gzip.
+     *
+     * @return string строки для flist.txt
+     */
+    private function collectModuleFiles(): string
+    {
+        $flist = '';
+        $customModulesDir = $this->dirs['custom_modules'];
+        if (!is_dir($customModulesDir)) {
+            return $flist;
+        }
+        $tarPath  = Util::which('tar');
+        $findPath = Util::which('find');
+        $tmpDir   = $this->di->getShared('config')->path('core.tempDir');
+        $entries  = scandir($customModulesDir);
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $moduleDir = "$customModulesDir/$entry";
+            if (!is_dir($moduleDir)) {
+                continue;
+            }
+
+            // Проверяем наличие module.json — признак модуля.
+            if (!file_exists("$moduleDir/module.json")) {
+                continue;
+            }
+
+            // 1. Собираем DB-файлы из db/ подкаталога отдельно.
+            $dbDir = "$moduleDir/db";
+            if (is_dir($dbDir)) {
+                $dbFiles = [];
+                Processes::mwExec("{$findPath} '$dbDir' -type f -name '*.db'", $dbFiles);
+                foreach ($dbFiles as $dbFile) {
+                    if (!empty($dbFile)) {
+                        $flist .= 'backup-config:' . $dbFile . "\n";
+                    }
+                }
+            }
+
+            // 2. Сжимаем каталог модуля (без содержимого db/).
+            $escapedEntry = escapeshellarg($entry);
+            $tmpFile = "$tmpDir/backup_module_{$entry}.tar.gz";
+            $res = Processes::mwExec(
+                "$tarPath -czf '$tmpFile' --exclude='db/*' -C '$customModulesDir' $escapedEntry"
+            );
+            if ($res === 0 && file_exists($tmpFile)) {
+                $flist .= 'backup-module-archive:' . $tmpFile . "\n";
+            } else {
+                // Fallback: старый способ — поштучно.
+                Util::sysLogMsg('Backup', "Failed to compress module $entry, falling back to individual files");
+                if (file_exists($tmpFile)) {
+                    unlink($tmpFile);
+                }
+                $moduleFiles = [];
+                Processes::mwExec("{$findPath} '$moduleDir'", $moduleFiles);
+                foreach ($moduleFiles as $mf) {
+                    if (!empty($mf)) {
+                        $flist .= 'backup-config:' . $mf . "\n";
+                    }
+                }
+            }
+        }
+        return $flist;
+    }
+
+    /**
+     * Добавляет сжатый архив модуля в основной архив бекапа.
+     * Хранит под путём /module_archives/{basename} внутри архива.
+     *
+     * @param string $archivePath путь к .tar.gz файлу
+     */
+    private function addModuleArchiveToBackup(string $archivePath): void
+    {
+        if (!file_exists($archivePath)) {
+            return;
+        }
+        $baseName = basename($archivePath);
+        $archiveStorePath = "/module_archives/$baseName";
+
+        if ($this->type === self::ARH_TYPE_TAR) {
+            $tarPath = Util::which('tar');
+            if (!file_exists($this->result_file)) {
+                Processes::mwExec("$tarPath -cf $this->result_file -T /dev/null");
+            }
+            Processes::mwExec(
+                "$tarPath --transform='flags=r;s|$archivePath|$archiveStorePath|' -Prf $this->result_file $archivePath"
+            );
+        } elseif ($this->type === self::ARH_TYPE_IMG) {
+            $cpPath = Util::which('cp');
+            $this->createImgFile();
+            $destDir = $this->result_dir . '/module_archives';
+            Util::mwMkdir($destDir);
+            Processes::mwExec("$cpPath '$archivePath' '$destDir/$baseName'");
+        } else {
+            $sevenZaPath = Util::which('7za');
+            Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$archivePath}'", $out);
+        }
+    }
+
+    /**
+     * Извлекает сжатый архив модуля из бекапа и распаковывает в custom_modules.
+     *
+     * @param string $archivePath путь внутри архива (/module_archives/backup_module_XXX.tar.gz)
+     * @return bool
+     */
+    private function extractModuleArchive(string $archivePath): bool
+    {
+        $tarPath = Util::which('tar');
+        $cpPath  = Util::which('cp');
+        $tmpDir  = $this->di->getShared('config')->path('core.tempDir');
+        $baseName = basename($archivePath);
+        $tmpFile = "$tmpDir/$baseName";
+
+        // Извлекаем .tar.gz из основного архива.
+        if ($this->type === self::ARH_TYPE_TAR) {
+            Processes::mwExec(
+                "$tarPath --transform='flags=r;s|$archivePath|$tmpFile|' -Pxf $this->result_file $archivePath"
+            );
+        } elseif ($this->type === self::ARH_TYPE_IMG) {
+            $mountPath = Util::which('mount');
+            if (!Storage::diskIsMounted($this->result_file, '')) {
+                Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
+            }
+            Processes::mwExec("$cpPath '{$this->result_dir}{$archivePath}' '$tmpFile'");
+        } else {
+            $sevenZaPath = Util::which('7za');
+            Processes::mwExec("{$sevenZaPath} e -y -r -spf '{$this->result_file}' '{$archivePath}'");
+            if (file_exists($archivePath) && $archivePath !== $tmpFile) {
+                rename($archivePath, $tmpFile);
+            }
+        }
+
+        if (!file_exists($tmpFile)) {
+            Util::sysLogMsg('Backup', "Failed to extract module archive: $archivePath");
+            return false;
+        }
+
+        // Распаковываем содержимое .tar.gz в каталог модулей.
+        $customModulesDir = $this->dirs['custom_modules'];
+        Util::mwMkdir($customModulesDir);
+        $res = Processes::mwExec("$tarPath -xzf '$tmpFile' -C '$customModulesDir'");
+        unlink($tmpFile);
+
+        if ($res !== 0) {
+            Util::sysLogMsg('Backup', "Failed to extract module archive contents: $baseName");
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Создает список файлов к бекапу.
      */
     private function createFileList(): bool
@@ -1290,10 +1467,7 @@ class Backup extends PbxExtensionBase
         $flist = '';
         if (($this->options['backup-config'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-config:' . $this->dirs['settings_db_path'] . "\n", FILE_APPEND);
-            Processes::mwExec("find {$this->dirs['custom_modules']}", $out);
-            foreach ($out as $filename) {
-                $flist .= 'backup-config:' . $filename . "\n";
-            }
+            $flist .= $this->collectModuleFiles();
         }
         if (($this->options['backup-cdr'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-cdr:' . $this->dirs['cdr_db_path'] . "\n", FILE_APPEND);
@@ -1666,9 +1840,15 @@ class Backup extends PbxExtensionBase
                 $section  = ''; // Этот файл будет восстановленр в любом случае.
                 $filename = $filename_data;
             } else {
-                $tmp_data = explode(':', $filename_data);
+                $tmp_data = explode(':', $filename_data, 2);
                 $section  = $tmp_data[0] ?? '';
                 $filename = $tmp_data[1] ?? '';
+            }
+
+            // backup-module-archive привязан к опции backup-config.
+            $effectiveSection = $section;
+            if ($section === 'backup-module-archive') {
+                $effectiveSection = 'backup-config';
             }
 
             $this->progress++;
@@ -1676,7 +1856,7 @@ class Backup extends PbxExtensionBase
                 continue;
             }
 
-            if ($section !== '' && is_array($backupOptions) && ! isset($backupOptions[$section])) {
+            if ($effectiveSection !== '' && is_array($backupOptions) && ! isset($backupOptions[$effectiveSection])) {
                 // Если секция указана, и она не определена в массиве опций,
                 // то не восстанавливаем файл.
                 unset($filename);
@@ -1711,6 +1891,13 @@ class Backup extends PbxExtensionBase
      */
     public function extractFile($filename = '', &$out = null): bool
     {
+        // Сжатые архивы модулей — обрабатываем отдельно.
+        if (strpos($filename, '/module_archives/') === 0
+            && substr($filename, -7) === '.tar.gz'
+        ) {
+            return $this->extractModuleArchive($filename);
+        }
+
         $arr_out     = [];
         $mountPath   = Util::which('mount');
         $sedPath     = Util::which('sed');
