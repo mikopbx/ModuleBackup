@@ -221,6 +221,28 @@ class Backup extends PbxExtensionBase
             return $res;
         }
 
+        // Проверка свободного места на диске перед распаковкой.
+        $uploadedFileSize = filesize($data['temp_file']);
+        $storage = new Storage();
+        $storageData = $storage->getAllHdd();
+        $mountPoint = '';
+        Storage::isStorageDiskMounted('', $mountPoint);
+        $freeSpace = 0;
+        foreach ($storageData as $disk) {
+            if (($disk['mounted'] ?? '') === $mountPoint) {
+                $freeSpace = intval($disk['free_space']) * 1024 * 1024; // MB → bytes
+                break;
+            }
+        }
+        // Для распаковки нужно минимум 2x размер файла (архив + содержимое) + 500MB запас.
+        $requiredSpace = ($uploadedFileSize * 2) + (500 * 1024 * 1024);
+        if ($freeSpace > 0 && $freeSpace < $requiredSpace) {
+            $freeSpaceMB = round($freeSpace / 1024 / 1024);
+            $requiredMB = round($requiredSpace / 1024 / 1024);
+            $res->messages[] = "Not enough disk space. Free: {$freeSpaceMB} MB, required: {$requiredMB} MB";
+            return $res;
+        }
+
         $data['extension'] = Util::getExtensionOfFile(basename($data['temp_file']));
         $data['res_file']  = $backupDir . '/' . $data['dir_name'].'/resultfile.'.$data['extension'];
         $data['mnt_point'] = $backupDir . '/' . $data['dir_name'].'/mnt_point';
