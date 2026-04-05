@@ -42,6 +42,7 @@
             <label>{{ t._('bkp_FTPPath') }}</label>
             {{ form.render('ftp_path') }}
         </div>
+        <br>
         <div class="sixteen wide field">
             <button type="button" class="ui basic labeled icon button" id="check-connection-btn">
                 <i class="plug icon"></i>{{ t._('bkp_CheckConnection') }}
