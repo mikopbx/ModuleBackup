@@ -1532,7 +1532,7 @@ class Backup extends PbxExtensionBase
             }
         }
         if (($this->options['backup-records'] ?? '') === '1') {
-            Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name *.mp3", $out);
+            Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name '*.mp3'", $out);
             foreach ($out as $filename) {
                 $flist .= 'backup-records:' . $filename . "\n";
             }
