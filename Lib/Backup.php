@@ -315,53 +315,71 @@ class Backup extends PbxExtensionBase
 
     public static function unpackImgBackup($res, $backupDir, $data):PBXApiResult
     {
-        // Если бекап выполнялся в каталоге оперативной памяти:
-        $path_b_dir = "{$data['mnt_point']}/var/asterisk/backup/{$data['dir_name']}";
-        if ( ! file_exists($path_b_dir)) {
-            // Бекап выполнялся на диск - хранилище
-            $path_b_dir = "{$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/{$data['dir_name']}";
-        }
         $du      = Util::which('du');
         $awk     = Util::which('awk');
-        Processes::mwExec(
-            "$du {$data['mnt_point']}/storage/*/{$data['dir_name']}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
-            $out
-        );
-        if (($out[0] ?? false) && file_exists($out[0])) {
-            // бекап выполнялся на сетевой диск.
-            $path_b_dir = dirname($out[0]);
+        $findPath = Util::which('find');
+        $path_b_dir = '';
+
+        // 1. Ищем бекап в каталоге оперативной памяти.
+        $candidate = "{$data['mnt_point']}/var/asterisk/backup/{$data['dir_name']}";
+        if (file_exists("$candidate/flist.txt")) {
+            $path_b_dir = $candidate;
         }
 
-        if ( ! file_exists($path_b_dir)) {
+        // 2. Ищем по точному dir_name на диске через shell glob.
+        if ($path_b_dir === '') {
             Processes::mwExec(
-                "$du {$data['mnt_point']}/storage/usbdisk[1-9]/mikopbx/backup/*/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
+                "$findPath {$data['mnt_point']}/storage -path '*/{$data['dir_name']}/flist.txt' -type f 2>/dev/null",
                 $out
             );
-            if (($out[0] ?? false) && file_exists($out[0])) {
-                // бекап выполнялся на сетевой диск.
+            if (!empty($out[0]) && file_exists($out[0])) {
                 $path_b_dir = dirname($out[0]);
-                $new_id     = basename($path_b_dir);
+            }
+        }
+
+        // 3. dir_name не совпадает с оригинальным — ищем любой backup_*/flist.txt внутри img.
+        if ($path_b_dir === '') {
+            Processes::mwExec(
+                "$findPath {$data['mnt_point']} -name 'flist.txt' -path '*/backup*/flist.txt' -type f 2>/dev/null",
+                $out
+            );
+            if (!empty($out[0]) && file_exists($out[0])) {
+                $path_b_dir = dirname($out[0]);
+                $new_id = basename($path_b_dir);
                 if ($data['dir_name'] !== $new_id) {
-                    $result['new_id'] = $new_id;
+                    $res->data['new_id'] = $new_id;
                 }
             }
         }
+
+        if ($path_b_dir === '') {
+            $umount = Util::which('umount');
+            Processes::mwExec("$umount {$data['res_file']}");
+            $res->success = false;
+            $res->messages[] = 'Backup data not found inside IMG file';
+            Util::sysLogMsg('Backup_unpack_conf_img', 'Backup data not found inside IMG file');
+            return $res;
+        }
+
         $cp = Util::which('cp');
-        $resMwExec    = Processes::mwExec("$cp {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
+        $resMwExec = Processes::mwExec("$cp {$path_b_dir}/* {$backupDir}/{$data['dir_name']}");
 
         $umount = Util::which('umount');
         Processes::mwExec("$umount {$data['res_file']}");
+
+        // Если оригинальный ID отличается от upload ID — переименовываем каталог.
         if (isset($res->data['new_id'])) {
-            $mv           = Util::which('mv');
-            $resMwExec              = Processes::mwExec(
+            $mv = Util::which('mv');
+            $resMwExec = Processes::mwExec(
                 "$mv {$backupDir}/{$data['dir_name']} {$backupDir}/{$res->data['new_id']}"
             );
             $data['dir_name'] = $res->data['new_id'];
         }
+
         if ($resMwExec !== 0) {
             $res->success = false;
-            $message = 'Fail mount cp data from loop device...';
-            $res->messages[]=$message;
+            $message = 'Failed to copy data from IMG backup';
+            $res->messages[] = $message;
             Util::sysLogMsg('Backup_unpack_conf_img', $message);
         }
 
@@ -369,7 +387,7 @@ class Backup extends PbxExtensionBase
             ! file_exists("{$backupDir}/{$data['dir_name']}/config.json")) {
             $res->success = false;
             $message = 'Broken backup file';
-            $res->messages[]=$message;
+            $res->messages[] = $message;
             Util::sysLogMsg('Backup_unpack_conf_img', $message);
         }
         if (!$res->success) {
