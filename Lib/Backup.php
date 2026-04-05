@@ -130,7 +130,8 @@ class Backup extends PbxExtensionBase
         }
 
         $this->file_list             = "{$this->dirs['backup']}/{$this->id}/flist.txt";
-        $this->result_file           = "{$this->dirs['backup']}/{$this->id}/resultfile.{$this->type}";
+        $this->result_file           = ($this->type === self::ARH_TYPE_DIR)
+            ? '' : "{$this->dirs['backup']}/{$this->id}/resultfile.{$this->type}";
         $this->result_dir            = "{$this->dirs['backup']}/{$this->id}/mnt_point";
         $this->progress_file         = "{$this->dirs['backup']}/{$this->id}/progress.txt";
         $this->errorFile             = "{$this->dirs['backup']}/{$this->id}/error.txt";
@@ -1624,7 +1625,8 @@ class Backup extends PbxExtensionBase
         $destDir = "$b_dir/module_archives";
         Util::mwMkdir($destDir);
         $cpPath = Util::which('cp');
-        Processes::mwExec("$cpPath '$archivePath' '$destDir/" . basename($archivePath) . "'");
+        $escapedBaseName = escapeshellarg(basename($archivePath));
+        Processes::mwExec("$cpPath '$archivePath' $destDir/$escapedBaseName");
     }
 
     /**
