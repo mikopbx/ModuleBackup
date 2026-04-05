@@ -30,6 +30,7 @@ class Backup extends PbxExtensionBase
     public const ARH_TYPE_IMG = 'img';
     public const ARH_TYPE_ZIP = 'zip';
     public const ARH_TYPE_TAR = 'tar';
+    public const ARH_TYPE_DIR = 'dir';
 
     private $id;
     private array $dirs;
@@ -110,15 +111,22 @@ class Backup extends PbxExtensionBase
         if (isset($options['type'])) {
             $this->type = $options['type'];
         }
-        if (file_exists("{$this->dirs['backup']}/{$this->id}/resultfile.zip")) {
-            $this->type = self::ARH_TYPE_ZIP;
-        }
-        foreach ([self::ARH_TYPE_TAR, self::ARH_TYPE_IMG, self::ARH_TYPE_ZIP] as $extension){
-            $filename = "{$this->dirs['backup']}/{$this->id}/resultfile.$extension";
-            if (file_exists($filename)) {
-                $this->type = $extension;
-                break;
+        // Определяем тип существующего бекапа по файлу архива.
+        if ($this->type !== self::ARH_TYPE_DIR) {
+            foreach ([self::ARH_TYPE_ZIP, self::ARH_TYPE_TAR, self::ARH_TYPE_IMG] as $extension) {
+                $filename = "{$this->dirs['backup']}/{$this->id}/resultfile.$extension";
+                if (file_exists($filename)) {
+                    $this->type = $extension;
+                    break;
+                }
             }
+        }
+        // Если нет resultfile.* но есть flist.txt — это dir-бекап.
+        if ($this->type === self::ARH_TYPE_TAR
+            && !file_exists("{$this->dirs['backup']}/{$this->id}/resultfile.tar")
+            && file_exists("{$this->dirs['backup']}/{$this->id}/flist.txt")
+        ) {
+            $this->type = self::ARH_TYPE_DIR;
         }
 
         $this->file_list             = "{$this->dirs['backup']}/{$this->id}/flist.txt";
@@ -684,7 +692,15 @@ class Backup extends PbxExtensionBase
             if (file_exists($file_progress)) {
                 $size = 0;
                 if ($filename !== '') {
-                    $size = round(filesize($filename) / 1024 / 1024, 2); // размер в мегабайтах.
+                    $size = round(filesize($filename) / 1024 / 1024, 2);
+                } elseif (is_dir("{$dirs['backup']}/$base_filename/files")
+                    || is_dir("{$dirs['backup']}/$base_filename/module_archives")) {
+                    // Dir-бекап: вычисляем размер каталога.
+                    $duPath = Util::which('du');
+                    Processes::mwExec("$duPath -sm '{$dirs['backup']}/$base_filename' 2>/dev/null", $duOut);
+                    if (!empty($duOut[0])) {
+                        $size = intval($duOut[0]);
+                    }
                 }
                 // Получим данные по прогрессу и количеству файлов.
                 $file_data   = file_get_contents($file_progress);
@@ -1306,7 +1322,11 @@ class Backup extends PbxExtensionBase
                     $this->addBatchToArchive($batchFiles);
                     $batchFiles = [];
                 }
-                $this->addModuleArchiveToBackup($filename);
+                if ($this->type === self::ARH_TYPE_DIR) {
+                    $this->copyModuleArchiveToDir($filename);
+                } else {
+                    $this->addModuleArchiveToBackup($filename);
+                }
                 if (file_exists($filename)) {
                     unlink($filename);
                 }
@@ -1326,7 +1346,11 @@ class Backup extends PbxExtensionBase
                     $this->addBatchToArchive($batchFiles);
                     $batchFiles = [];
                 }
-                $this->addFileToArchive($filename);
+                if ($this->type === self::ARH_TYPE_DIR) {
+                    $this->copyDbFileToDir($filename);
+                } else {
+                    $this->addFileToArchive($filename);
+                }
             } else {
                 $batchFiles[] = $filename;
             }
@@ -1345,7 +1369,9 @@ class Backup extends PbxExtensionBase
         }
 
         file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
-        $this->addFileToArchive($this->progress_file);
+        if ($this->type !== self::ARH_TYPE_DIR) {
+            $this->addFileToArchive($this->progress_file);
+        }
 
         if (Storage::diskIsMounted($this->result_file, '')) {
             $unmountPath = Util::which('umount');
@@ -1474,8 +1500,14 @@ class Backup extends PbxExtensionBase
         $baseName = basename($archivePath);
         $tmpFile = "$tmpDir/$baseName";
 
-        // Извлекаем .tar.gz из основного архива.
-        if ($this->type === self::ARH_TYPE_TAR) {
+        // Извлекаем .tar.gz из основного архива (или каталога dir-бекапа).
+        if ($this->type === self::ARH_TYPE_DIR) {
+            $b_dir = "{$this->dirs['backup']}/{$this->id}";
+            $srcFile = "$b_dir/$archivePath";
+            if (file_exists($srcFile)) {
+                Processes::mwExec("$cpPath '$srcFile' '$tmpFile'");
+            }
+        } elseif ($this->type === self::ARH_TYPE_TAR) {
             Processes::mwExec(
                 "$tarPath --transform='flags=r;s|$archivePath|$tmpFile|' -Pxf $this->result_file $archivePath"
             );
@@ -1509,6 +1541,80 @@ class Backup extends PbxExtensionBase
             return false;
         }
         return true;
+    }
+
+    /**
+     * Копирует батч обычных файлов в каталог dir-бекапа с сохранением структуры.
+     *
+     * @param array $files
+     */
+    private function copyFilesToDir(array $files): void
+    {
+        $cpPath = Util::which('cp');
+        $b_dir = "{$this->dirs['backup']}/{$this->id}";
+        foreach ($files as $file) {
+            if (!file_exists($file)) {
+                continue;
+            }
+            $destFile = "$b_dir/files$file";
+            $destDir = dirname($destFile);
+            Util::mwMkdir($destDir);
+            Processes::mwExec("$cpPath '$file' '$destFile'");
+        }
+    }
+
+    /**
+     * Копирует DB-файл в каталог dir-бекапа (.backup + gzip).
+     *
+     * @param string $filename
+     */
+    private function copyDbFileToDir(string $filename): void
+    {
+        if (!file_exists($filename)) {
+            return;
+        }
+        $b_dir = "{$this->dirs['backup']}/{$this->id}";
+        $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+
+        $gzFile = false;
+        if (self::isSqliteFile($filename)) {
+            $gzFile = $this->backupAndCompressDb($filename, $tmpDir);
+        }
+        if ($gzFile === false) {
+            $gzFile = $this->compressFileGzip($filename, $tmpDir);
+        }
+
+        $cpPath = Util::which('cp');
+        if ($gzFile !== false) {
+            $destFile = "$b_dir/files{$filename}.gz";
+            $destDir = dirname($destFile);
+            Util::mwMkdir($destDir);
+            Processes::mwExec("$cpPath '$gzFile' '$destFile'");
+            unlink($gzFile);
+        } else {
+            // Fallback — копируем как есть.
+            $destFile = "$b_dir/files$filename";
+            $destDir = dirname($destFile);
+            Util::mwMkdir($destDir);
+            Processes::mwExec("$cpPath '$filename' '$destFile'");
+        }
+    }
+
+    /**
+     * Копирует сжатый модульный архив в каталог dir-бекапа.
+     *
+     * @param string $archivePath
+     */
+    private function copyModuleArchiveToDir(string $archivePath): void
+    {
+        if (!file_exists($archivePath)) {
+            return;
+        }
+        $b_dir = "{$this->dirs['backup']}/{$this->id}";
+        $destDir = "$b_dir/module_archives";
+        Util::mwMkdir($destDir);
+        $cpPath = Util::which('cp');
+        Processes::mwExec("$cpPath '$archivePath' '$destDir/" . basename($archivePath) . "'");
     }
 
     /**
@@ -1566,6 +1672,11 @@ class Backup extends PbxExtensionBase
     private function addBatchToArchive(array $files): void
     {
         if (empty($files)) {
+            return;
+        }
+
+        if ($this->type === self::ARH_TYPE_DIR) {
+            $this->copyFilesToDir($files);
             return;
         }
 
@@ -1997,7 +2108,36 @@ class Backup extends PbxExtensionBase
         $file_dir = dirname($result_file);
         Util::mwMkdir($file_dir);
 
-        if (in_array($this->type, [self::ARH_TYPE_IMG, self::ARH_TYPE_TAR], true)) {
+        if ($this->type === self::ARH_TYPE_DIR) {
+            // Dir-бекап: файлы лежат в каталоге бекапа.
+            $b_dir = "{$this->dirs['backup']}/{$this->id}";
+            $isDbExtension = (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'db');
+
+            if ($isDbExtension) {
+                // DB-файл: может быть .gz (новый формат) или обычный (старый).
+                $srcGz = "$b_dir/files{$filename}.gz";
+                $srcPlain = "$b_dir/files{$filename}";
+                if (file_exists($srcGz)) {
+                    $gzipPath = Util::which('gzip');
+                    $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+                    $tmpFile = "$tmpDir/" . basename($filename) . '.gz';
+                    Processes::mwExec("$cpPath '$srcGz' '$tmpFile'");
+                    Processes::mwExec("$gzipPath -d -f '$tmpFile'");
+                    $tmpFileDb = substr($tmpFile, 0, -3);
+                    Processes::mwExec("$cpPath '$tmpFileDb' '$result_file'");
+                    unlink($tmpFileDb);
+                } elseif (file_exists($srcPlain)) {
+                    Processes::mwExec("$cpPath '$srcPlain' '$result_file'");
+                }
+                Util::addRegularWWWRights($result_file);
+            } else {
+                // Обычный файл: копируем из каталога бекапа.
+                $srcFile = "$b_dir/files{$filename}";
+                if (file_exists($srcFile)) {
+                    Processes::mwExec("$cpPath '$srcFile' '$result_file'");
+                }
+            }
+        } elseif (in_array($this->type, [self::ARH_TYPE_IMG, self::ARH_TYPE_TAR], true)) {
             if (self::ARH_TYPE_IMG === $this->type && !Storage::diskIsMounted($this->result_file, '')) {
                 Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
             }

@@ -76,7 +76,10 @@ class WorkerBackup extends WorkerBase
                 $id                = 'backup_' . time();
                 $options           = json_decode($res->what_backup, true);
                 $options['backup'] = $backup_dir;
-                if ($res->ftp_sftp_mode !== '1' && $res->ftp_sftp_mode !== '3') {
+                if ($res->ftp_sftp_mode === '1' || $res->ftp_sftp_mode === '3') {
+                    // SFTP/WebDAV: копируем файлы как есть (без tar-архива).
+                    $options['type'] = 'dir';
+                } else {
                     $options['type'] = 'zip';
                 }
                 $b = new Backup($id, $options);
