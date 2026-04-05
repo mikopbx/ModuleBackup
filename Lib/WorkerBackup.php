@@ -81,6 +81,11 @@ class WorkerBackup extends WorkerBase
                 }
                 $b = new Backup($id, $options);
                 $b->createArchive();
+
+                // Очистка кеша davfs2 после бекапа на WebDAV.
+                if ($res->ftp_sftp_mode === '3') {
+                    Backup::cleanupWebDavCache();
+                }
             }
         }
     }

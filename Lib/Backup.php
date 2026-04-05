@@ -981,9 +981,14 @@ class Backup extends PbxExtensionBase
         // Create the local directory if it doesn't exist
         Util::mwMkdir($local_dir);
         $di = MikoPBXVersion::getDefaultDi();
-        $tmpDir = $di->getShared('config')->path('core.tempDir').'webdav-cache';
+
+        // Кеш davfs2 размещаем на дисковом хранилище, не в tmpfs (RAM),
+        // иначе при бекапе больших файлов RAM переполняется.
+        $diskTmpBase = $di->getShared('config')->path('core.mediaMountPoint') . '/mikopbx/tmp';
+        Util::mwMkdir($diskTmpBase);
+        $tmpDir = "$diskTmpBase/webdav-cache";
         Util::mwMkdir($tmpDir, true);
-        $tmpDirBackUp = $di->getShared('config')->path('core.tempDir').'webdav-backup-cache';
+        $tmpDirBackUp = "$diskTmpBase/webdav-backup-cache";
         Util::mwMkdir($tmpDirBackUp, true);
         $out = [];
         $conf = 'dav_user www'.PHP_EOL.
@@ -1009,6 +1014,27 @@ class Backup extends PbxExtensionBase
             unset($response);
         }
         return Storage::isStorageDiskMounted("$local_dir ");
+    }
+
+    /**
+     * Очищает кеш davfs2 (WebDAV) на диске.
+     * Вызывать после завершения бекапа на WebDAV.
+     */
+    public static function cleanupWebDavCache(): void
+    {
+        $di = MikoPBXVersion::getDefaultDi();
+        if ($di === null) {
+            return;
+        }
+        $diskTmpBase = $di->getShared('config')->path('core.mediaMountPoint') . '/mikopbx/tmp';
+        $rmPath = Util::which('rm');
+        foreach (['webdav-cache', 'webdav-backup-cache'] as $dir) {
+            $path = "$diskTmpBase/$dir";
+            if (is_dir($path)) {
+                Processes::mwExec("{$rmPath} -rf '$path'");
+                Util::mwMkdir($path, true);
+            }
+        }
     }
 
     /**
