@@ -8,7 +8,7 @@
  *
  */
 
-/* global globalRootUrl, globalTranslate, Form, SemanticLocalization, BackupApi */
+/* global globalRootUrl, globalTranslate, Form, SemanticLocalization, BackupApi, Config, PbxApi */
 
 var automaticBackup = {
   $timeStart: $('#time-start'),
@@ -18,6 +18,8 @@ var automaticBackup = {
   $formObj: $('#backup-automatic-form'),
   $createNowTgl: $('#create-now'),
   $ftpMode: $('#ftp_sftp_mode'),
+  $checkBtn: $('#check-connection-btn'),
+  $checkResult: $('#check-connection-result'),
   validateRules: {
     ftp_host: {
       identifier: 'ftp_host',
@@ -70,6 +72,43 @@ var automaticBackup = {
     });
     automaticBackup.initializeForm();
     automaticBackup.onChangeMode();
+    automaticBackup.$checkBtn.on('click', automaticBackup.onCheckConnection);
+  },
+  /**
+   * Проверка подключения к удалённому серверу.
+   * Сначала сохраняет форму, потом вызывает checkStorageFtp.
+   */
+  onCheckConnection: function onCheckConnection() {
+    automaticBackup.$checkBtn.addClass('loading');
+    automaticBackup.$checkResult.html('');
+    // Сохраняем форму чтобы данные попали в БД.
+    var formData = automaticBackup.$formObj.form('get values');
+    $.ajax({
+      url: "".concat(globalRootUrl, "module-backup/save"),
+      method: 'POST',
+      data: formData,
+      success: function success() {
+        // После сохранения проверяем подключение.
+        var ruleId = formData.id || '1';
+        $.api({
+          url: "".concat(Config.pbxUrl, "/pbxcore/api/modules/ModuleBackup/checkStorageFtp?id=").concat(ruleId),
+          on: 'now',
+          successTest: PbxApi.successTest,
+          onSuccess: function onSuccess() {
+            automaticBackup.$checkBtn.removeClass('loading');
+            automaticBackup.$checkResult.html("<i class=\"check circle green icon\"></i>".concat(globalTranslate.bkp_CheckConnectionSuccess));
+          },
+          onFailure: function onFailure() {
+            automaticBackup.$checkBtn.removeClass('loading');
+            automaticBackup.$checkResult.html("<i class=\"times circle red icon\"></i>".concat(globalTranslate.bkp_CheckConnectionFail));
+          }
+        });
+      },
+      error: function error() {
+        automaticBackup.$checkBtn.removeClass('loading');
+        automaticBackup.$checkResult.html("<i class=\"times circle red icon\"></i>".concat(globalTranslate.bkp_CheckConnectionFail));
+      }
+    });
   },
   onChangeMode: function onChangeMode() {
     var val = automaticBackup.$ftpMode.val();

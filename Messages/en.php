@@ -58,4 +58,7 @@ return [
     'bkp_ErrorOnDownloadBackup' => 'Could not find backup file',
     'bkp_Mode' => 'Mode',
     'bkp_WebDavMode' => 'WebDAV',
+    'bkp_CheckConnection' => 'Test connection',
+    'bkp_CheckConnectionSuccess' => 'Connection successful',
+    'bkp_CheckConnectionFail' => 'Connection failed',
 ];

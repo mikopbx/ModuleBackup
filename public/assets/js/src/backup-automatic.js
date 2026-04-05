@@ -6,7 +6,7 @@
  *
  */
 
-/* global globalRootUrl, globalTranslate, Form, SemanticLocalization, BackupApi */
+/* global globalRootUrl, globalTranslate, Form, SemanticLocalization, BackupApi, Config, PbxApi */
 
 const automaticBackup = {
 	$timeStart: $('#time-start'),
@@ -16,6 +16,8 @@ const automaticBackup = {
 	$formObj: $('#backup-automatic-form'),
 	$createNowTgl: $('#create-now'),
 	$ftpMode: $('#ftp_sftp_mode'),
+	$checkBtn: $('#check-connection-btn'),
+	$checkResult: $('#check-connection-result'),
 	validateRules: {
 		ftp_host: {
 			identifier: 'ftp_host',
@@ -77,6 +79,51 @@ const automaticBackup = {
 		automaticBackup.initializeForm();
 
 		automaticBackup.onChangeMode();
+
+		automaticBackup.$checkBtn.on('click', automaticBackup.onCheckConnection);
+	},
+
+	/**
+	 * Проверка подключения к удалённому серверу.
+	 * Сначала сохраняет форму, потом вызывает checkStorageFtp.
+	 */
+	onCheckConnection() {
+		automaticBackup.$checkBtn.addClass('loading');
+		automaticBackup.$checkResult.html('');
+		// Сохраняем форму чтобы данные попали в БД.
+		const formData = automaticBackup.$formObj.form('get values');
+		$.ajax({
+			url: `${globalRootUrl}module-backup/save`,
+			method: 'POST',
+			data: formData,
+			success() {
+				// После сохранения проверяем подключение.
+				const ruleId = formData.id || '1';
+				$.api({
+					url: `${Config.pbxUrl}/pbxcore/api/modules/ModuleBackup/checkStorageFtp?id=${ruleId}`,
+					on: 'now',
+					successTest: PbxApi.successTest,
+					onSuccess() {
+						automaticBackup.$checkBtn.removeClass('loading');
+						automaticBackup.$checkResult.html(
+							`<i class="check circle green icon"></i>${globalTranslate.bkp_CheckConnectionSuccess}`
+						);
+					},
+					onFailure() {
+						automaticBackup.$checkBtn.removeClass('loading');
+						automaticBackup.$checkResult.html(
+							`<i class="times circle red icon"></i>${globalTranslate.bkp_CheckConnectionFail}`
+						);
+					},
+				});
+			},
+			error() {
+				automaticBackup.$checkBtn.removeClass('loading');
+				automaticBackup.$checkResult.html(
+					`<i class="times circle red icon"></i>${globalTranslate.bkp_CheckConnectionFail}`
+				);
+			},
+		});
 	},
 
 	onChangeMode(){

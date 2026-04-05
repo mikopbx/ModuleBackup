@@ -59,4 +59,7 @@ return [
     'bkp_CreateBackupAfterSaveSettings' => 'Начать создание копии сразу после сохранения настроек',
     'bkp_ErrorOnDownloadBackup'         => 'Не удалось найти файл бекапа',
     'bkp_Mode'                          => 'Протокол',
+    'bkp_CheckConnection'               => 'Проверить подключение',
+    'bkp_CheckConnectionSuccess'        => 'Подключение успешно',
+    'bkp_CheckConnectionFail'           => 'Не удалось подключиться',
 ];
