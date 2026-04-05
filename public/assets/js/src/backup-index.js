@@ -123,7 +123,7 @@ const backupIndex = {
 				$newRow.find('a').each((index, obj) => {
 					$(obj).remove();
 				});
-				const percentOfTotal = 100 * (value.progress / value.total);
+				const percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
 				$newRow.find('.status').html(`<i class="spinner loading icon"></i> ${parseInt(percentOfTotal, 10)} %`);
 				const $actionsCell = $newRow.find('td').last();
 				$actionsCell.html(

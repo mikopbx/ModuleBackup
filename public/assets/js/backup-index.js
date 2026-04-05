@@ -124,7 +124,7 @@ var backupIndex = {
         $newRow.find('a').each(function (index, obj) {
           $(obj).remove();
         });
-        var percentOfTotal = 100 * (value.progress / value.total);
+        var percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
         $newRow.find('.status').html("<i class=\"spinner loading icon\"></i> ".concat(parseInt(percentOfTotal, 10), " %"));
         var $actionsCell = $newRow.find('td').last();
         $actionsCell.html("<div class=\"ui small basic icon buttons action-buttons\">" + "<a href=\"#\" class=\"ui button stop-backup popuped\" data-value=\"".concat(value.id, "\" data-content=\"").concat(globalTranslate.bkp_StopCreateBackup, "\">") + "<i class=\"icon stop red\"></i></a></div>");
