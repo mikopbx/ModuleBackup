@@ -1107,11 +1107,18 @@ class Backup extends PbxExtensionBase
             $res->messages[] = 'Invalid backup ID';
             return $res;
         }
-        $b        = new Backup($id);
+        $b = new Backup($id);
+
+        // Dir-бекапы (SFTP/WebDAV) хранятся как файлы — скачивание не поддерживается.
+        if ($b->getType() === self::ARH_TYPE_DIR) {
+            $res->messages[] = 'Download is not available for directory backups on remote server';
+            return $res;
+        }
+
         $filename = $b->getResultFile();
 
         if ( ! file_exists($filename)) {
-            $res->messages[]="File '{$filename}' not found";
+            $res->messages[] = "File not found for backup $id";
             return $res;
         }
 
@@ -1135,6 +1142,15 @@ class Backup extends PbxExtensionBase
      *
      * @return string
      */
+    /**
+     * Возвращает тип бекапа.
+     * @return string
+     */
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
     public function getResultFile(): string
     {
         if ( ! file_exists($this->result_file)) {
@@ -1147,6 +1163,9 @@ class Backup extends PbxExtensionBase
                 }
                 if (file_exists("{$filename}.img")) {
                     $this->result_file = "{$filename}.img";
+                }
+                if (file_exists("{$filename}.tar")) {
+                    $this->result_file = "{$filename}.tar";
                 }
             }
         }
