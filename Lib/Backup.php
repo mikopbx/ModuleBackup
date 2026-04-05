@@ -516,7 +516,7 @@ class Backup extends PbxExtensionBase
         $workerPath = Util::getFilePathByClassName(WorkerBackup::class);
         $phpPath    = Util::which('php');
         $command    = "$phpPath -f $workerPath";
-        Processes::processWorker($command, "$id backup", 'WorkerBackup', 'start');
+        Processes::processWorker($command, "$id backup", WorkerBackup::class, 'start');
         usleep(2000000);
         $res->success = true;
         $res->data['id']   = $id;
