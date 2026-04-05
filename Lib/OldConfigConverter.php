@@ -105,7 +105,7 @@ class OldConfigConverter
         }
         foreach ($rows as $row){
             $columns = explode(';', $row);
-            if($columns<3){
+            if(count($columns)<3){
                 continue;
             }
             if(!is_numeric($columns[0])){
@@ -143,11 +143,11 @@ class OldConfigConverter
 
                 $resultSip     .='        <forwarding_external>'.$uid.'</forwarding_external>'.PHP_EOL;
 
-                $ringLength = 1*($columns[4]??0);
+                $ringLength = intval($columns[4]??0);
                 if($ringLength > 1){
                     $resultSip.='        <ringlength>'.$ringLength.'</ringlength>'.PHP_EOL;
                 }
-                if( 1*($columns[5]??0) === 1){
+                if( intval($columns[5]??0) === 1){
                     $resultSip.='        <forwarding_on_busy_external>'.$uid.'</forwarding_on_busy_external>'.PHP_EOL;
                     $resultSip.='        <forwarding_on_unavailable_external>'.$uid.'</forwarding_on_unavailable_external>'.PHP_EOL;
                 }
@@ -183,7 +183,7 @@ class OldConfigConverter
                 continue;
             }
 
-            if($columns<3){
+            if(count($columns)<3){
                 continue;
             }
             if(!is_numeric($columns[0])){
@@ -241,7 +241,7 @@ class OldConfigConverter
                 $uid = strtoupper('SIP-PHONE-' . md5(time()));
             }
 
-            $extension = preg_replace('/\D/', '', $this->get('extension'));
+            $extension = preg_replace('/\D/', '', (string)$this->get('extension'));
             $this->data['m_ExtensionForwardingRights'][] = [
                 'extension'                  => $extension,
                 'ringlength'                 => $this->get('ringlength'),
@@ -286,8 +286,10 @@ class OldConfigConverter
             $rules         = 'rule_SIP,local_network';
             $networkfilter = $this->addNetFilter((string) $this->get('permitip'), (string) $this->get('permitnetmask'), $rules);
 
-            $secret = substr($this->get('secret'), 0, stripos($this->get('secret'), '</secret>'));
-            $secret = (trim($secret) === '') ? $this->get('secret') : $secret;
+            $secretVal = (string)$this->get('secret');
+            $secretPos = stripos($secretVal, '</secret>');
+            $secret = $secretPos !== false ? substr($secretVal, 0, $secretPos) : $secretVal;
+            $secret = (trim($secret) === '') ? $secretVal : $secret;
 
             $language_code = $this->get('language');
             if ($language_code !== 'ru-ru' && $language_code !== 'en-en') {
@@ -296,7 +298,7 @@ class OldConfigConverter
                 $language = $this->get('language');
             }
             /** @var \MikoPBX\Common\Models\Extensions $exten_db */
-            $exten_db = Extensions::findFirst("number='{$this->get('extension')}'");
+            $exten_db = Extensions::findFirst(['conditions' => 'number=:number:', 'bind' => ['number' => $this->get('extension')]]);
             $id       = ($exten_db === null) ? null : $exten_db->id;
             $user_id  = ($exten_db === null) ? null : $exten_db->userid;
 
@@ -455,8 +457,8 @@ class OldConfigConverter
             if (!$userid) {
                 continue;
             }
-            $mobileNumber = preg_replace('/\D/', '', $this->get('extension'));
-            $exten_db      = ExternalPhones::findFirst("extension='{$mobileNumber}'");
+            $mobileNumber = preg_replace('/\D/', '', (string)$this->get('extension'));
+            $exten_db      = ExternalPhones::findFirst(['conditions' => 'extension=:extension:', 'bind' => ['extension' => $mobileNumber]]);
             $mobile_uniqid = ($exten_db === null) ? $this->get('uniqid') : $exten_db->uniqid;
 
 
@@ -494,7 +496,7 @@ class OldConfigConverter
         $managers = $this->resHtml->find('services manager manager-user');
         foreach ($managers as $e) {
             $this->initData($e->children);
-            if ($this->get('username') != null) {
+            if ($this->get('username') !== null) {
                 $rules         = 'rule_AMI';
                 $networkfilter = $this->addNetFilter((string) $this->get('permitip'), (string) $this->get('permitnetmask'), $rules);
 
@@ -526,12 +528,12 @@ class OldConfigConverter
                     $manager["{$key}_write"] = 'false';
                 }
 
-                $read_permission = ($this->get('read-permission') == null) ? [] : $this->get('read-permission');
+                $read_permission = $this->get('read-permission') ?? [];
                 foreach ($read_permission as $key) {
                     $manager["{$key}_read"] = 'on';
                 }
-                $read_permission = ($this->get('write-permission') == null) ? [] : $this->get('read-permission');
-                foreach ($read_permission as $key) {
+                $write_permission = $this->get('write-permission') ?? [];
+                foreach ($write_permission as $key) {
                     $manager["{$key}_write"] = 'on';
                 }
                 foreach ($keys as $key) {
@@ -553,7 +555,7 @@ class OldConfigConverter
         $providers = $this->resHtml->find('sip provider');
         foreach ($providers as $e) {
             $this->initData($e->children);
-            if ($this->get('uniqid') == null) {
+            if ($this->get('uniqid') === null) {
                 continue;
             }
             $this->data['providers_sip'][] = [
@@ -598,7 +600,7 @@ class OldConfigConverter
         $provider = $this->resHtml->find('iax provider');
         foreach ($provider as $e) {
             $this->initData($e->children);
-            if ($this->get('uniqid') == null) {
+            if ($this->get('uniqid') === null) {
                 continue;
             }
 
@@ -623,7 +625,7 @@ class OldConfigConverter
                 'codec_h263'       => 'false',
                 'codec_h264'       => 'false',
                 'manualattributes' => base64_decode($this->get('manualattributes')),
-                'noregister'       => ($this->get('noregister') == 'yes') ? 'on' : 'false',
+                'noregister'       => ($this->get('noregister') === 'yes') ? 'on' : 'false',
             ];
         }
     }
@@ -673,7 +675,7 @@ class OldConfigConverter
         $callflows = $this->resHtml->find('cfe callflow');
         foreach ($callflows as $e) {
             $this->initData($e->children);
-            if ($this->get('data') == null) {
+            if ($this->get('data') === null) {
                 continue;
             }
             $data = json_decode(base64_decode($this->get('data')), true);
@@ -890,7 +892,7 @@ class OldConfigConverter
     {
         $w_api = new WebAPIClient();
         foreach ($this->data['net_filters'] as $key => $value) {
-            $filter = NetworkFilters::findFirst("permit='{$key}'");
+            $filter = NetworkFilters::findFirst(['conditions' => 'permit=:permit:', 'bind' => ['permit' => $key]]);
             if ($filter === null) {
                 $w_api->addNetFilter($value);
             }
@@ -898,7 +900,7 @@ class OldConfigConverter
 
         foreach ($this->data['extensions'] as $key => $value) {
             if ( ! empty($value['tmp_pbx_networkfilter'])) {
-                $filter = NetworkFilters::findFirst("permit='{$value['tmp_pbx_networkfilter']}'");
+                $filter = NetworkFilters::findFirst(['conditions' => 'permit=:permit:', 'bind' => ['permit' => $value['tmp_pbx_networkfilter']]]);
                 if ($filter !== null) {
                     $value['sip_networkfilterid'] = $filter->id;
                 }
@@ -920,7 +922,7 @@ class OldConfigConverter
             $w_api->addSmartIvr($this->data['smart_ivr']);
         }
 
-        if ($this->data['saas_key'] != '') {
+        if ($this->data['saas_key'] !== '') {
             $config = new MikoPBXConfig();
             $config->setGeneralSettings('PBXLicense', $this->data['saas_key']);
         }

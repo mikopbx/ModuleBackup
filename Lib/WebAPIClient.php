@@ -72,9 +72,9 @@ class WebAPIClient
      * @param array  $data
      * @param bool   $is_login
      *
-     * @return string
+     * @return array
      */
-    private function postData(string $url, array $data, bool$is_login = false)
+    private function postData(string $url, array $data, bool $is_login = false): array
     {
         $client = new Client(['timeout' => 10]);
 
@@ -101,10 +101,10 @@ class WebAPIClient
                 'response' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null,
             ];
 
-        } catch (JsonException $e) {
+        } catch (\JsonException $e) {
             $result = [
                 'message' => 'JSON decode error: ' . $e->getMessage(),
-                'raw' => isset($raw) ? $raw : null,
+                'raw' => $raw ?? null,
             ];
         }
 
@@ -168,9 +168,14 @@ class WebAPIClient
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         try {
-            $result = json_decode(curl_exec($ch), true, 512, JSON_THROW_ON_ERROR);
+            $raw = curl_exec($ch);
             curl_close($ch);
-        }catch ( Exception $e){
+            if ($raw === false) {
+                $result = ['message' => 'cURL error: request failed'];
+            } else {
+                $result = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            }
+        } catch (\Exception $e) {
             $result = ['message' => $e->getMessage()];
         }
         return $result;
@@ -188,7 +193,7 @@ class WebAPIClient
         $result = false;
         $url           = "$this->baseUrl/admin-cabinet/providers/save/sip";
         $resultrequest = $this->postData($url, $data);
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
             $this->errors['provider_sip'][] = [
@@ -212,10 +217,10 @@ class WebAPIClient
         $result = false;
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/providers/save/iax";
         $resultrequest = $this->postData($url, $data);
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['provider_sip'][] = [
+            $this->errors['provider_iax'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];
@@ -237,7 +242,7 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/asterisk-managers/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
             $this->errors['manager'][] = [
@@ -262,10 +267,10 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/firewall/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['manager'][] = [
+            $this->errors['net_filter'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];
@@ -287,10 +292,10 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/call-queues/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['manager'][] = [
+            $this->errors['queue'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];
@@ -312,10 +317,10 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/ivr-menu/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['manager'][] = [
+            $this->errors['ivr_menu'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];
@@ -337,10 +342,10 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/module-smart-i-v-r/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['manager'][] = [
+            $this->errors['smart_ivr'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];
@@ -362,10 +367,10 @@ class WebAPIClient
         $url           = "{$this->protocol}://{$this->host}:{$this->port}/admin-cabinet/dialplan-applications/save";
         $resultrequest = $this->postData($url, $data);
 
-        if ($resultrequest['success'] == true) {
+        if (($resultrequest['success'] ?? false) === true) {
             $result = true;
         } else {
-            $this->errors['manager'][] = [
+            $this->errors['dialplan_applications'][] = [
                 'data'    => $data,
                 'message' => $resultrequest['message'],
             ];

@@ -46,12 +46,28 @@ class Backup extends PbxExtensionBase
     private int $progress = 0;
     private string $type = self::ARH_TYPE_TAR;
     private bool $remote = false;
+    private array $systemDbFiles = [];
 
     public const CONF_DB_NAME = 'mikopbx.db';
     public const DB_FILES = [
         self::CONF_DB_NAME,
         'cdr.db'
     ];
+
+    /**
+     * Проверяет, что ID бекапа содержит только допустимые символы.
+     * Защита от Path Traversal и Command Injection.
+     *
+     * @param mixed $id
+     * @return bool
+     */
+    public static function isValidId($id): bool
+    {
+        if (empty($id) || !is_string($id)) {
+            return false;
+        }
+        return preg_match('/^[a-zA-Z0-9_\-]+$/', $id) === 1;
+    }
 
     public function __construct($id, $options = null)
     {
@@ -67,12 +83,17 @@ class Backup extends PbxExtensionBase
         ];
 
         $this->dirs_mem = self::getAsteriskDirsMem();
+        $this->systemDbFiles = [
+            $this->dirs['settings_db_path'],
+            $this->dirs['cdr_db_path'],
+        ];
         // Проверим особенность бекапа на сетевой диск.
         $du      = Util::which('du');
         $awk     = Util::which('awk');
 
+        $escapedId = escapeshellarg($id);
         Processes::mwExec(
-            "$du /storage/*/{$id}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
+            "$du /storage/*/{$escapedId}/flist.txt -d 0 2> /dev/null | $awk '{print $2}'",
             $out
         );
         if (($out[0] ?? false) && file_exists($out[0])) {
@@ -109,9 +130,9 @@ class Backup extends PbxExtensionBase
         $this->options_recover_file  = "{$this->dirs['backup']}/{$this->id}/options_recover.json";
         $this->progress_file_recover = "{$this->dirs['backup']}/{$this->id}/progress_recover.txt";
 
-        if (( ! is_array($options) || $options === null) && file_exists($this->config_file)) {
-            $this->options = json_decode(file_get_contents($this->config_file), true);
-        } elseif( is_array($options)) {
+        if (!is_array($options) && file_exists($this->config_file)) {
+            $this->options = json_decode(file_get_contents($this->config_file), true) ?? [];
+        } elseif (is_array($options)) {
             $this->options = $options;
         }else {
             $this->options = [];
@@ -171,7 +192,7 @@ class Backup extends PbxExtensionBase
         $res->processor = __METHOD__;
 
         if ( ! file_exists($data['temp_file'])) {
-            $res->messages[] = "Backup file {$data['temp_file']} not found";
+            $res->messages[] = "Backup file not found";
             return $res;
         }
         $backupDir         = self::getBackupDir();
@@ -181,7 +202,24 @@ class Backup extends PbxExtensionBase
             return $res;
         }
         $uploadDir         = $di->getShared('config')->path('www.uploadDir');
+
+        // Проверка Path Traversal: temp_file должен быть внутри uploadDir или backupDir.
+        $realTempFile = realpath($data['temp_file']);
+        if ($realTempFile === false
+            || (strpos($realTempFile, $uploadDir . '/') !== 0 && strpos($realTempFile, $backupDir . '/') !== 0)
+        ) {
+            $res->messages[] = 'File path is not allowed';
+            return $res;
+        }
+        $data['temp_file'] = $realTempFile;
+
         $data['dir_name']  = str_ireplace([$uploadDir.'/', $backupDir.'/', self::ARH_TYPE_IMG, self::ARH_TYPE_TAR], ['','','', ''] , dirname($data['temp_file']));
+
+        // Проверяем dir_name на Path Traversal.
+        if (!self::isValidId($data['dir_name'])) {
+            $res->messages[] = 'Invalid directory name in uploaded file path';
+            return $res;
+        }
 
         $data['extension'] = Util::getExtensionOfFile(basename($data['temp_file']));
         $data['res_file']  = $backupDir . '/' . $data['dir_name'].'/resultfile.'.$data['extension'];
@@ -190,7 +228,9 @@ class Backup extends PbxExtensionBase
 
         if($data['temp_file'] !== $data['res_file']){
             $mvPath = Util::which('mv');
-            Processes::mwExec("{$mvPath} {$data['temp_file']} {$data['res_file']}");
+            $escapedTempFile = escapeshellarg($data['temp_file']);
+            $escapedResFile  = escapeshellarg($data['res_file']);
+            Processes::mwExec("{$mvPath} {$escapedTempFile} {$escapedResFile}");
         }
         $res->data['id']        = $data['dir_name'];
         $res->success = true;
@@ -232,8 +272,10 @@ class Backup extends PbxExtensionBase
         file_put_contents("{$backupDir}/{$data['dir_name']}/progress.txt", '0');
 
         foreach (['flist.txt', 'progress.txt', 'config.json'] as $baseFile){
-            $file = trim(shell_exec("$tarPath -Ptf {$data['res_file']} | $grepPath -e '/$baseFile$'"));
-            shell_exec("$tarPath --transform='flags=r;s|$file|{$backupDir}/{$data['dir_name']}/$baseFile|' -Pxf {$data['res_file']} $file");
+            $file = trim((string)shell_exec("$tarPath -Ptf {$data['res_file']} | $grepPath -e '/$baseFile$'"));
+            if ($file !== '') {
+                shell_exec("$tarPath --transform='flags=r;s|$file|{$backupDir}/{$data['dir_name']}/$baseFile|' -Pxf {$data['res_file']} $file");
+            }
         }
         if ( ! file_exists("{$backupDir}/{$data['dir_name']}/flist.txt") ||
             ! file_exists("{$backupDir}/{$data['dir_name']}/config.json")) {
@@ -415,7 +457,11 @@ class Backup extends PbxExtensionBase
         $res->processor = __METHOD__;
         $id     = 'backup_' . time();
         if ($options !== null) {
-            $id = $options['id']??$id;
+            $id = $options['id'] ?? $id;
+            if (!self::isValidId($id)) {
+                $res->messages[] = 'Invalid backup ID';
+                return $res;
+            }
             // Инициализируем настройки резервного копирования.
             $b = new Backup($id, $options);
             unset($b);
@@ -444,8 +490,8 @@ class Backup extends PbxExtensionBase
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
 
-        if (empty($id)) {
-            $res->messages[]= 'ID is empty';
+        if (!self::isValidId($id)) {
+            $res->messages[]= 'Invalid backup ID';
             return $res;
         }
         $b = new Backup($id);
@@ -488,6 +534,10 @@ class Backup extends PbxExtensionBase
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
+        if (!self::isValidId($id)) {
+            $res->messages[] = 'Invalid backup ID';
+            return $res;
+        }
         $workerPath = Util::getFilePathByClassName(WorkerBackup::class);
         $phpPath    = Util::which('php');
         $command    = "{$phpPath} -f {$workerPath}";
@@ -508,8 +558,8 @@ class Backup extends PbxExtensionBase
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
-        if (empty($id)) {
-            $res->messages[] = 'ID is empty';
+        if (!self::isValidId($id)) {
+            $res->messages[] = 'Invalid backup ID';
             return $res;
         }
         $b_dir  = self::getBackupDir() . "/{$id}";
@@ -601,16 +651,16 @@ class Backup extends PbxExtensionBase
                 // Получим данные по прогрессу и количеству файлов.
                 $file_data   = file_get_contents($file_progress);
                 $data        = explode('/', $file_data);
-                $progress    = (!empty($data) && is_numeric($data[0])) ? trim($data[0]) * 1 : 0;
-                $total       = (count($data) > 1 && is_numeric($data[1])) ? trim($data[1]) * 1 : 0;
+                $progress    = (!empty($data) && is_numeric($data[0])) ? intval(trim($data[0])) : 0;
+                $total       = (count($data) > 1 && is_numeric($data[1])) ? intval(trim($data[1])) : 0;
                 $config_file = "{$dirs['backup']}/{$base_filename}/config.json";
 
                 if (file_exists("{$dirs['backup']}/{$base_filename}/progress_recover.txt")) {
                     $file_data        = file_get_contents("{$dirs['backup']}/{$base_filename}/progress_recover.txt");
                     $data             = explode('/', $file_data);
-                    $progress_recover = (!empty($data)) ? trim($data[0]) * 1 : 0;
+                    $progress_recover = (!empty($data)) ? intval(trim($data[0])) : 0;
                     if ($total === 0) {
-                        $total = (count($data) > 1) ? trim($data[1]) * 1 : 0;
+                        $total = (count($data) > 1) ? intval(trim($data[1])) : 0;
                     }
                 } else {
                     $progress_recover = '';
@@ -623,7 +673,7 @@ class Backup extends PbxExtensionBase
                 // Вычислим timestamp.
                 $arr_fname        = explode('_', $base_filename);
                 $data = [
-                    'date'             => preg_replace("/[^0-9+]/", '', $arr_fname[1]) ?? time(),
+                    'date'             => preg_replace("/[^0-9+]/", '', $arr_fname[1] ?? '') ?: time(),
                     'size'             => $size,
                     'progress'         => $progress,
                     'total'            => $total,
@@ -972,6 +1022,10 @@ class Backup extends PbxExtensionBase
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
+        if (!self::isValidId($id)) {
+            $res->messages[] = 'Invalid backup ID';
+            return $res;
+        }
         $b        = new Backup($id);
         $filename = $b->getResultFile();
 
@@ -1032,7 +1086,7 @@ class Backup extends PbxExtensionBase
             if($data !== '1'){
                 continue;
             }
-            $needSpace += 1 * $estimatedSize->getResult()['data'][$key];
+            $needSpace += intval($estimatedSize->getResult()['data'][$key]);
         }
         if($this->remote === true){
             // Это резервное копирование на удаленнный сервер.
@@ -1049,7 +1103,7 @@ class Backup extends PbxExtensionBase
             Storage::isStorageDiskMounted('', $mountPoint);
             foreach ($freeSpaceData as $storageData){
                 if($storageData['mounted'] === $mountPoint){
-                    $freeSpace =  1*$storageData['free_space'];
+                    $freeSpace = intval($storageData['free_space']);
                 }
             }
         }
@@ -1088,7 +1142,28 @@ class Backup extends PbxExtensionBase
         $pathDf = Util::which('df');
         $pathGrep = Util::which('grep');
         $pathAwk = Util::which('awk');
-        return 1*shell_exec("$pathDf -m -a -P | $pathGrep $mountPoint | $pathAwk '{print $4}'");
+        $escapedMountPoint = escapeshellarg($mountPoint);
+        return (string)intval(shell_exec("$pathDf -m -a -P | $pathGrep $escapedMountPoint | $pathAwk '{print $4}'"));
+    }
+
+    /**
+     * Вычисляет размер батча в зависимости от общего количества файлов.
+     *
+     * @param int $totalFiles
+     * @return int
+     */
+    private function getBatchSize(int $totalFiles): int
+    {
+        if ($totalFiles <= 500) {
+            return 50;
+        }
+        if ($totalFiles <= 2000) {
+            return 100;
+        }
+        if ($totalFiles <= 10000) {
+            return 200;
+        }
+        return 500;
     }
 
     /**
@@ -1102,7 +1177,7 @@ class Backup extends PbxExtensionBase
         if (file_exists($this->progress_file)) {
             $file_data      = file_get_contents($this->progress_file);
             $data           = explode('/', $file_data);
-            $this->progress = trim($data[0]) * 1;
+            $this->progress = intval(trim($data[0]));
         }else{
             file_put_contents($this->progress_file, '0');
         }
@@ -1140,22 +1215,69 @@ class Backup extends PbxExtensionBase
             return ['result' => 'ERROR', 'message' => $msg];
         }
         $count_files = count($lines);
+        $batchSize   = $this->getBatchSize($count_files);
         file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
+
+        $batchFiles = [];
         while ($this->progress < $count_files) {
             $filename_data = trim($lines[$this->progress]);
             if (strpos($filename_data, ':') === false) {
+                $section  = '';
                 $filename = $filename_data;
             } else {
-                $filename = (explode(':', $filename_data))[1];
-            }
-            if (is_dir($filename) === false) {
-                $this->addFileToArchive($filename);
+                $parts    = explode(':', $filename_data, 2);
+                $section  = $parts[0];
+                $filename = $parts[1] ?? '';
             }
 
             $this->progress++;
-            if ($this->progress % 10 === 0) {
+
+            if ($filename === '') {
+                continue;
+            }
+
+            // Сжатые архивы модулей — добавляем как один файл и удаляем tmp.
+            if ($section === 'backup-module-archive') {
+                if (!empty($batchFiles)) {
+                    $this->addBatchToArchive($batchFiles);
+                    $batchFiles = [];
+                }
+                $this->addModuleArchiveToBackup($filename);
+                if (file_exists($filename)) {
+                    unlink($filename);
+                }
+                file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
+                continue;
+            }
+
+            if (is_dir($filename) || !file_exists($filename)) {
+                continue;
+            }
+
+            // DB-файлы обрабатываем поштучно (.backup + gzip).
+            $isDbFile = $this->isDbFile($filename);
+            if ($isDbFile) {
+                // Сначала сбросим накопленный батч обычных файлов.
+                if (!empty($batchFiles)) {
+                    $this->addBatchToArchive($batchFiles);
+                    $batchFiles = [];
+                }
+                $this->addFileToArchive($filename);
+            } else {
+                $batchFiles[] = $filename;
+            }
+
+            // Когда батч набран — сбрасываем в архив и обновляем прогресс.
+            if (count($batchFiles) >= $batchSize) {
+                $this->addBatchToArchive($batchFiles);
+                $batchFiles = [];
                 file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
             }
+        }
+
+        // Остаток файлов.
+        if (!empty($batchFiles)) {
+            $this->addBatchToArchive($batchFiles);
         }
 
         file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
@@ -1167,6 +1289,162 @@ class Backup extends PbxExtensionBase
         }
 
         return ['result' => 'Success', 'count_files' => $count_files];
+    }
+
+    /**
+     * Собирает файлы модулей для бекапа.
+     * Каждый модуль (каталог с module.json) сжимается в .tar.gz (без содержимого db/).
+     * DB-файлы модулей записываются отдельно для обработки через .backup + gzip.
+     *
+     * @return string строки для flist.txt
+     */
+    private function collectModuleFiles(): string
+    {
+        $flist = '';
+        $customModulesDir = $this->dirs['custom_modules'];
+        if (!is_dir($customModulesDir)) {
+            return $flist;
+        }
+        $tarPath  = Util::which('tar');
+        $findPath = Util::which('find');
+        $tmpDir   = $this->di->getShared('config')->path('core.tempDir');
+        $entries  = scandir($customModulesDir);
+
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $moduleDir = "$customModulesDir/$entry";
+            if (!is_dir($moduleDir)) {
+                continue;
+            }
+
+            // Проверяем наличие module.json — признак модуля.
+            if (!file_exists("$moduleDir/module.json")) {
+                continue;
+            }
+
+            // 1. Собираем DB-файлы из db/ подкаталога отдельно.
+            $dbDir = "$moduleDir/db";
+            if (is_dir($dbDir)) {
+                $dbFiles = [];
+                Processes::mwExec("{$findPath} '$dbDir' -type f -name '*.db'", $dbFiles);
+                foreach ($dbFiles as $dbFile) {
+                    if (!empty($dbFile)) {
+                        $flist .= 'backup-config:' . $dbFile . "\n";
+                    }
+                }
+            }
+
+            // 2. Сжимаем каталог модуля (без содержимого db/).
+            $escapedEntry = escapeshellarg($entry);
+            $tmpFile = "$tmpDir/backup_module_{$entry}.tar.gz";
+            $res = Processes::mwExec(
+                "$tarPath -czf '$tmpFile' --exclude='db/*' -C '$customModulesDir' $escapedEntry"
+            );
+            if ($res === 0 && file_exists($tmpFile)) {
+                $flist .= 'backup-module-archive:' . $tmpFile . "\n";
+            } else {
+                // Fallback: старый способ — поштучно.
+                Util::sysLogMsg('Backup', "Failed to compress module $entry, falling back to individual files");
+                if (file_exists($tmpFile)) {
+                    unlink($tmpFile);
+                }
+                $moduleFiles = [];
+                Processes::mwExec("{$findPath} '$moduleDir'", $moduleFiles);
+                foreach ($moduleFiles as $mf) {
+                    if (!empty($mf)) {
+                        $flist .= 'backup-config:' . $mf . "\n";
+                    }
+                }
+            }
+        }
+        return $flist;
+    }
+
+    /**
+     * Добавляет сжатый архив модуля в основной архив бекапа.
+     * Хранит под путём /module_archives/{basename} внутри архива.
+     *
+     * @param string $archivePath путь к .tar.gz файлу
+     */
+    private function addModuleArchiveToBackup(string $archivePath): void
+    {
+        if (!file_exists($archivePath)) {
+            return;
+        }
+        $baseName = basename($archivePath);
+        $archiveStorePath = "/module_archives/$baseName";
+
+        if ($this->type === self::ARH_TYPE_TAR) {
+            $tarPath = Util::which('tar');
+            if (!file_exists($this->result_file)) {
+                Processes::mwExec("$tarPath -cf $this->result_file -T /dev/null");
+            }
+            Processes::mwExec(
+                "$tarPath --transform='flags=r;s|$archivePath|$archiveStorePath|' -Prf $this->result_file $archivePath"
+            );
+        } elseif ($this->type === self::ARH_TYPE_IMG) {
+            $cpPath = Util::which('cp');
+            $this->createImgFile();
+            $destDir = $this->result_dir . '/module_archives';
+            Util::mwMkdir($destDir);
+            Processes::mwExec("$cpPath '$archivePath' '$destDir/$baseName'");
+        } else {
+            $sevenZaPath = Util::which('7za');
+            Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$archivePath}'", $out);
+        }
+    }
+
+    /**
+     * Извлекает сжатый архив модуля из бекапа и распаковывает в custom_modules.
+     *
+     * @param string $archivePath путь внутри архива (/module_archives/backup_module_XXX.tar.gz)
+     * @return bool
+     */
+    private function extractModuleArchive(string $archivePath): bool
+    {
+        $tarPath = Util::which('tar');
+        $cpPath  = Util::which('cp');
+        $tmpDir  = $this->di->getShared('config')->path('core.tempDir');
+        $baseName = basename($archivePath);
+        $tmpFile = "$tmpDir/$baseName";
+
+        // Извлекаем .tar.gz из основного архива.
+        if ($this->type === self::ARH_TYPE_TAR) {
+            Processes::mwExec(
+                "$tarPath --transform='flags=r;s|$archivePath|$tmpFile|' -Pxf $this->result_file $archivePath"
+            );
+        } elseif ($this->type === self::ARH_TYPE_IMG) {
+            $mountPath = Util::which('mount');
+            if (!Storage::diskIsMounted($this->result_file, '')) {
+                Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
+            }
+            Processes::mwExec("$cpPath '{$this->result_dir}{$archivePath}' '$tmpFile'");
+        } else {
+            $sevenZaPath = Util::which('7za');
+            Processes::mwExec("{$sevenZaPath} e -y -r -spf '{$this->result_file}' '{$archivePath}'");
+            if (file_exists($archivePath) && $archivePath !== $tmpFile) {
+                rename($archivePath, $tmpFile);
+            }
+        }
+
+        if (!file_exists($tmpFile)) {
+            Util::sysLogMsg('Backup', "Failed to extract module archive: $archivePath");
+            return false;
+        }
+
+        // Распаковываем содержимое .tar.gz в каталог модулей.
+        $customModulesDir = $this->dirs['custom_modules'];
+        Util::mwMkdir($customModulesDir);
+        $res = Processes::mwExec("$tarPath -xzf '$tmpFile' -C '$customModulesDir'");
+        unlink($tmpFile);
+
+        if ($res !== 0) {
+            Util::sysLogMsg('Backup', "Failed to extract module archive contents: $baseName");
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1189,10 +1467,7 @@ class Backup extends PbxExtensionBase
         $flist = '';
         if (($this->options['backup-config'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-config:' . $this->dirs['settings_db_path'] . "\n", FILE_APPEND);
-            Processes::mwExec("find {$this->dirs['custom_modules']}", $out);
-            foreach ($out as $filename) {
-                $flist .= 'backup-config:' . $filename . "\n";
-            }
+            $flist .= $this->collectModuleFiles();
         }
         if (($this->options['backup-cdr'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-cdr:' . $this->dirs['cdr_db_path'] . "\n", FILE_APPEND);
@@ -1220,17 +1495,150 @@ class Backup extends PbxExtensionBase
     }
 
     /**
+     * Добавляет батч обычных файлов в архив одной командой.
+     *
+     * @param array $files
+     */
+    private function addBatchToArchive(array $files): void
+    {
+        if (empty($files)) {
+            return;
+        }
+
+        if ($this->type === self::ARH_TYPE_TAR) {
+            $tarPath = Util::which('tar');
+            if (!file_exists($this->result_file)) {
+                Processes::mwExec("$tarPath -cf $this->result_file -T /dev/null");
+            }
+            $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+            $batchListFile = "$tmpDir/backup_batch_" . getmypid() . '.txt';
+            file_put_contents($batchListFile, implode("\n", $files) . "\n");
+            Processes::mwExec("$tarPath -Prf $this->result_file -T $batchListFile");
+            unlink($batchListFile);
+        } elseif ($this->type === self::ARH_TYPE_IMG) {
+            foreach ($files as $file) {
+                $this->addFileToArchive($file);
+            }
+        } else {
+            // ZIP — 7za поддерживает список файлов через @listfile.
+            $sevenZaPath = Util::which('7za');
+            $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+            $batchListFile = "$tmpDir/backup_batch_" . getmypid() . '.txt';
+            file_put_contents($batchListFile, implode("\n", $files) . "\n");
+            Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' @{$batchListFile}", $out);
+            unlink($batchListFile);
+        }
+    }
+
+    /**
+     * Проверяет, является ли файл базой данных (по расширению .db).
+     *
+     * @param string $filename
+     * @return bool
+     */
+    private function isDbFile(string $filename): bool
+    {
+        return strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'db';
+    }
+
+    /**
+     * Проверяет, является ли файл базой данных SQLite (по magic bytes).
+     *
+     * @param string $filename
+     * @return bool
+     */
+    private static function isSqliteFile(string $filename): bool
+    {
+        $fh = @fopen($filename, 'rb');
+        if (!$fh) {
+            return false;
+        }
+        $header = fread($fh, 16);
+        fclose($fh);
+        return strpos($header, 'SQLite format') === 0;
+    }
+
+    /**
+     * Создаёт безопасную копию SQLite БД через .backup и сжимает gzip.
+     * Возвращает путь к сжатому файлу.
+     *
+     * @param string $dbPath — путь к исходной БД
+     * @param string $tmpDir — каталог для временных файлов
+     * @return string|false — путь к .gz файлу или false при ошибке
+     */
+    private function backupAndCompressDb(string $dbPath, string $tmpDir)
+    {
+        $sqlite3Path = Util::which('sqlite3');
+        $gzipPath    = Util::which('gzip');
+        $tmpFile     = "$tmpDir/" . basename($dbPath) . '_bak';
+
+        // .backup не блокирует БД и работает атомарно.
+        $res = Processes::mwExec("$sqlite3Path '$dbPath' '.backup $tmpFile'");
+        if ($res !== 0 || !file_exists($tmpFile)) {
+            Util::sysLogMsg('Backup', "sqlite3 .backup failed for $dbPath");
+            return false;
+        }
+
+        // Сжимаем копию.
+        Processes::mwExec("$gzipPath -f $tmpFile");
+        $gzFile = "$tmpFile.gz";
+        if (!file_exists($gzFile)) {
+            Util::sysLogMsg('Backup', "gzip failed for $tmpFile");
+            return false;
+        }
+        return $gzFile;
+    }
+
+    /**
+     * Проверяет, является ли файл gzip-архивом по magic bytes.
+     *
+     * @param string $filePath
+     * @return bool
+     */
+    public static function isGzipped(string $filePath): bool
+    {
+        $fh = @fopen($filePath, 'rb');
+        if (!$fh) {
+            return false;
+        }
+        $magic = fread($fh, 2);
+        fclose($fh);
+        return ($magic === "\x1f\x8b");
+    }
+
+    /**
      * Добавляем файл к архиву.
      *
      * @param $filename
      */
+    /**
+     * Сжимает файл gzip. Возвращает путь к .gz файлу или false.
+     *
+     * @param string $filePath
+     * @param string $tmpDir
+     * @return string|false
+     */
+    private function compressFileGzip(string $filePath, string $tmpDir)
+    {
+        $gzipPath = Util::which('gzip');
+        $cpPath   = Util::which('cp');
+        $tmpFile  = "$tmpDir/" . basename($filePath) . '_copy';
+        Processes::mwExec("$cpPath '$filePath' '$tmpFile'");
+        if (!file_exists($tmpFile)) {
+            return false;
+        }
+        Processes::mwExec("$gzipPath -f $tmpFile");
+        $gzFile = "$tmpFile.gz";
+        return file_exists($gzFile) ? $gzFile : false;
+    }
+
     private function addFileToArchive($filename): void
     {
         if ( ! file_exists($filename)) {
             return;
         }
 
-        $isDbFile = in_array(basename($filename), self::DB_FILES);
+        $isDbFile = $this->isDbFile($filename);
         if ($this->type === self::ARH_TYPE_IMG) {
             $sqlite3Path = Util::which('sqlite3');
             $cpPath = Util::which('cp');
@@ -1238,40 +1646,64 @@ class Backup extends PbxExtensionBase
             $this->createImgFile();
             $res_dir = dirname($this->result_dir . $filename);
             Util::mwMkdir($res_dir);
-            if ($isDbFile) {
-                // Выполняем копирование через dump.
-                // Наиболее безопасный вариант.
-                Processes::mwExec(
-                    "$sqlite3Path '$filename' .dump | {$sqlite3Path} '{$this->result_dir}{$filename}' ",
+            if ($isDbFile && self::isSqliteFile($filename)) {
+                // SQLite: .backup создаёт атомарную копию, не блокируя БД.
+                $res = Processes::mwExec(
+                    "$sqlite3Path '$filename' '.backup {$this->result_dir}{$filename}'",
                     $out
                 );
+                if ($res !== 0) {
+                    Processes::mwExec("{$cpPath} '{$filename}' '{$this->result_dir}{$filename}'", $out);
+                }
             } else {
-                // Просто копируем файл.
                 Processes::mwExec("{$cpPath} '{$filename}' '{$this->result_dir}{$filename}' ", $out);
             }
         }elseif ($this->type === self::ARH_TYPE_TAR){
-            $sqlite3Path = Util::which('sqlite3');
             $tarPath = Util::which('tar');
             if(!file_exists($this->result_file)){
-                shell_exec("$tarPath -cf $this->result_file -T /dev/null");
+                Processes::mwExec("$tarPath -cf $this->result_file -T /dev/null");
             }
             $tmpDir = $this->di->getShared('config')->path('core.tempDir');
             if ($isDbFile) {
-                $tmpFile = "$tmpDir/".basename($filename).'_dmp';
-                shell_exec("$sqlite3Path '$filename' .dump > $tmpFile");
-                shell_exec("$tarPath --transform='flags=r;s|$tmpFile|$filename|' -Prf $this->result_file $tmpFile");
-                unlink($tmpFile);
+                $gzFile = false;
+                if (self::isSqliteFile($filename)) {
+                    // SQLite: .backup + gzip
+                    $gzFile = $this->backupAndCompressDb($filename, $tmpDir);
+                }
+                if ($gzFile === false) {
+                    // Не SQLite или .backup не сработал — просто gzip копию.
+                    $gzFile = $this->compressFileGzip($filename, $tmpDir);
+                }
+                if ($gzFile !== false) {
+                    Processes::mwExec("$tarPath --transform='flags=r;s|$gzFile|$filename|' -Prf $this->result_file $gzFile");
+                    unlink($gzFile);
+                } else {
+                    // Совсем fallback — добавляем как есть.
+                    Processes::mwExec("$tarPath -Prf $this->result_file $filename");
+                }
             } else {
-                // Добавляем файл к архиву.
-                shell_exec("$tarPath -Prf $this->result_file $filename");
+                Processes::mwExec("$tarPath -Prf $this->result_file $filename");
             }
         } else {
             $sevenZaPath = Util::which('7za');
-            $compressMode = '';
-            if($isDbFile){
-                $compressMode = '-mx=0';
+            $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+            if ($isDbFile) {
+                $gzFile = false;
+                if (self::isSqliteFile($filename)) {
+                    $gzFile = $this->backupAndCompressDb($filename, $tmpDir);
+                }
+                if ($gzFile === false) {
+                    $gzFile = $this->compressFileGzip($filename, $tmpDir);
+                }
+                if ($gzFile !== false) {
+                    Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$gzFile}'", $out);
+                    unlink($gzFile);
+                } else {
+                    Processes::mwExec("{$sevenZaPath} a -mx=0 -tzip -spf '{$this->result_file}' '{$filename}'", $out);
+                }
+            } else {
+                Processes::mwExec("{$sevenZaPath} a -tzip -spf '{$this->result_file}' '{$filename}'", $out);
             }
-            Processes::mwExec("{$sevenZaPath} a $compressMode -tzip -spf '{$this->result_file}' '{$filename}'", $out);
         }
     }
 
@@ -1358,7 +1790,7 @@ class Backup extends PbxExtensionBase
         foreach ($arr_size as $key => $value) {
             // Есть какие то аномалии с преобразование значение в json
             // Без этого костыля есть проблемы с округлением.
-            $arr_size[$key] = trim(1 * $value);
+            $arr_size[$key] = intval($value);
         }
 
         $res->success = true;
@@ -1393,7 +1825,7 @@ class Backup extends PbxExtensionBase
             // Получим текущий прогресс.
             $file_data      = file_get_contents($this->progress_file_recover);
             $data           = explode('/', $file_data);
-            $this->progress = trim($data[0]) * 1;
+            $this->progress = intval(trim($data[0]));
         }
 
         $count_files = count($lines);
@@ -1408,9 +1840,15 @@ class Backup extends PbxExtensionBase
                 $section  = ''; // Этот файл будет восстановленр в любом случае.
                 $filename = $filename_data;
             } else {
-                $tmp_data = explode(':', $filename_data);
+                $tmp_data = explode(':', $filename_data, 2);
                 $section  = $tmp_data[0] ?? '';
                 $filename = $tmp_data[1] ?? '';
+            }
+
+            // backup-module-archive привязан к опции backup-config.
+            $effectiveSection = $section;
+            if ($section === 'backup-module-archive') {
+                $effectiveSection = 'backup-config';
             }
 
             $this->progress++;
@@ -1418,7 +1856,7 @@ class Backup extends PbxExtensionBase
                 continue;
             }
 
-            if ($section !== '' && is_array($backupOptions) && ! isset($backupOptions[$section])) {
+            if ($effectiveSection !== '' && is_array($backupOptions) && ! isset($backupOptions[$effectiveSection])) {
                 // Если секция указана, и она не определена в массиве опций,
                 // то не восстанавливаем файл.
                 unset($filename);
@@ -1453,6 +1891,13 @@ class Backup extends PbxExtensionBase
      */
     public function extractFile($filename = '', &$out = null): bool
     {
+        // Сжатые архивы модулей — обрабатываем отдельно.
+        if (strpos($filename, '/module_archives/') === 0
+            && substr($filename, -7) === '.tar.gz'
+        ) {
+            return $this->extractModuleArchive($filename);
+        }
+
         $arr_out     = [];
         $mountPath   = Util::which('mount');
         $sedPath     = Util::which('sed');
@@ -1493,46 +1938,81 @@ class Backup extends PbxExtensionBase
                 Processes::mwExec("{$mountPath} -o loop {$this->result_file} {$this->result_dir}");
             }
             $baseFilename = basename($filename);
-            if (in_array($baseFilename, self::DB_FILES)) {
+            $isDbExtension = (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'db');
+            $isSystemDb    = in_array($baseFilename, self::DB_FILES);
+
+            if ($isDbExtension) {
+                $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+
+                // Для системных БД: сохраняем m_Storage перед восстановлением.
                 $sed_command = '';
-                if ($result_file !== $filename) {
-                    $sed_command = ' | ' . $sedPath . ' \'s/' . str_replace(
-                            '/',
-                            '\/',
-                            $mem_monitor_dir
-                        ) . '/' . str_replace(
-                            '/',
-                            '\/',
-                            $monitor_dir
-                        ) . '/g\'';
-                    $sed_command .= ' | ' . $sedPath . ' \'s/' . str_replace(
-                            '/',
-                            '\/',
-                            $this->dirs_mem['media']
-                        ) . '/' . str_replace('/', '\/', $this->dirs['media']) . '/g\'';
+                if ($isSystemDb) {
+                    if ($result_file !== $filename) {
+                        $sed_command = ' | ' . $sedPath . ' \'s/' . str_replace(
+                                '/',
+                                '\/',
+                                $mem_monitor_dir
+                            ) . '/' . str_replace(
+                                '/',
+                                '\/',
+                                $monitor_dir
+                            ) . '/g\'';
+                        $sed_command .= ' | ' . $sedPath . ' \'s/' . str_replace(
+                                '/',
+                                '\/',
+                                $this->dirs_mem['media']
+                            ) . '/' . str_replace('/', '\/', $this->dirs['media']) . '/g\'';
+                    }
+                    if ($baseFilename === self::CONF_DB_NAME) {
+                        $grepPath    = Util::which('grep');
+                        $dmpDbFile   = $tmpDir.'/tmp-storage.sql';
+                        $grepOptions = " -e '^INSERT INTO m_Storage'  -e '^INSERT INTO \"m_Storage'";
+                        Processes::mwExec("{$sqlite3Path} {$result_file} .dump | {$grepPath} {$grepOptions} > " . $dmpDbFile);
+                    }
+                    Processes::mwExec("{$rmPath} -rf {$result_file}* ");
                 }
 
-                $tmpDir = $this->di->getShared('config')->path('core.tempDir');
-                if($baseFilename === self::CONF_DB_NAME){
-                    $grepPath    = Util::which('grep');
-                    $dmpDbFile   = $tmpDir.'/tmp-storage.sql';
-                    $grepOptions =" -e '^INSERT INTO m_Storage'  -e '^INSERT INTO \"m_Storage'";
-                    system("{$sqlite3Path} {$result_file} .dump | {$grepPath} {$grepOptions} > ". $dmpDbFile);
+                if (self::ARH_TYPE_IMG === $this->type) {
+                    $imgDbFile = "{$this->result_dir}{$filename}";
+                    if ($isSystemDb && $sed_command !== '') {
+                        // Системная БД с трансформацией путей — dump + sed.
+                        Processes::mwExec("{$sqlite3Path} '{$imgDbFile}' .dump $sed_command | {$sqlite3Path} '{$result_file}' ", $arr_out);
+                    } else {
+                        Processes::mwExec("{$cpPath} '{$imgDbFile}' '{$result_file}'", $arr_out);
+                    }
+                } else {
+                    // TAR: извлекаем файл и определяем формат.
+                    $tmpDbFile = $tmpDir . "/" . time() . '-' . $baseFilename;
+                    Processes::mwExec("$tarPath --transform='flags=r;s|$filename|$tmpDbFile|' -Pxf $this->result_file $filename");
+                    if (self::isGzipped($tmpDbFile)) {
+                        // Новый формат: gzip-сжатый (.backup или просто gzip копия).
+                        $gzipPath = Util::which('gzip');
+                        $tmpDbFileGz = "$tmpDbFile.gz";
+                        rename($tmpDbFile, $tmpDbFileGz);
+                        Processes::mwExec("$gzipPath -d $tmpDbFileGz");
+                        // $tmpDbFile теперь содержит бинарный файл БД.
+                        Processes::mwExec("$cpPath '$tmpDbFile' '$result_file'", $arr_out);
+                    } else {
+                        // Старый формат: SQL dump — импортируем через sqlite3.
+                        if ($isSystemDb) {
+                            Processes::mwExec("$sqlite3Path '$result_file' < $tmpDbFile", $arr_out);
+                        } else {
+                            // Модульная БД из старого бекапа — пробуем как sqlite dump, если не получится — как бинарный файл.
+                            $res = Processes::mwExec("$sqlite3Path '$result_file' < $tmpDbFile", $arr_out);
+                            if ($res !== 0) {
+                                Processes::mwExec("$cpPath '$tmpDbFile' '$result_file'", $arr_out);
+                            }
+                        }
+                    }
+                    if (file_exists($tmpDbFile)) {
+                        unlink($tmpDbFile);
+                    }
                 }
-                Processes::mwExec("{$rmPath} -rf {$result_file}* ");
-                if(self::ARH_TYPE_IMG === $this->type) {
-                    // Выполняем копирование через dump.
-                    Processes::mwExec("{$sqlite3Path} '{$this->result_dir}{$filename}' .dump $sed_command | {$sqlite3Path} '{$result_file}' ", $arr_out);
-                }else{
-                    $tmpDbFileSql = $tmpDir."/".time().'-'.$baseFilename.'.sql';
-                    shell_exec("$tarPath --transform='flags=r;s|$filename|$tmpDbFileSql|' -Pxf $this->result_file $filename");
-                    Processes::mwExec("$sqlite3Path '$filename' < $tmpDbFileSql", $arr_out);
-                    unlink($tmpDbFileSql);
-                }
-                if($baseFilename === self::CONF_DB_NAME){
-                    system("$sqlite3Path $result_file 'DELETE FROM m_Storage'");
-                    // Восстанавливаем настройки из файла бекапа.
-                    system("$sqlite3Path $result_file < $dmpDbFile");
+
+                // Для системных БД: восстанавливаем m_Storage.
+                if ($isSystemDb && $baseFilename === self::CONF_DB_NAME) {
+                    Processes::mwExec("$sqlite3Path $result_file 'DELETE FROM m_Storage'");
+                    Processes::mwExec("$sqlite3Path $result_file < $dmpDbFile");
                     unlink($dmpDbFile);
                 }
                 Util::addRegularWWWRights($result_file);
@@ -1545,7 +2025,14 @@ class Backup extends PbxExtensionBase
             if ($filename !== $result_file && file_exists($filename)) {
                 Processes::mwExec("{$mvPath} '{$filename}' '{$result_file}'", $arr_out);
             }
-            if (in_array(basename($filename), self::DB_FILES)) {
+            // Для DB-файлов из ZIP: декомпрессия gzip если нужно.
+            if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'db' && file_exists($result_file)) {
+                if (self::isGzipped($result_file)) {
+                    $gzipPath = Util::which('gzip');
+                    $tmpGz = "$result_file.gz";
+                    rename($result_file, $tmpGz);
+                    Processes::mwExec("$gzipPath -d $tmpGz");
+                }
                 Util::addRegularWWWRights($result_file);
             }
         }
@@ -1571,6 +2058,18 @@ class Backup extends PbxExtensionBase
         if (empty($config_file)) {
             $config_file = "{$tempDir}/old_config.xml";
         }
+
+        // Проверка Path Traversal: разрешаем файлы только из tempDir или backupDir.
+        $realPath = realpath($config_file);
+        $backupDir = self::getBackupDir();
+        if ($realPath === false
+            || (strpos($realPath, $tempDir . '/') !== 0 && strpos($realPath, $backupDir . '/') !== 0)
+        ) {
+            $res->success = false;
+            $res->messages[] = 'Config file path is not allowed';
+            return $res;
+        }
+        $config_file = $realPath;
 
         if (file_exists($config_file)) {
             try {
@@ -1601,7 +2100,7 @@ class Backup extends PbxExtensionBase
     {
         $res = new PBXApiResult();
         $res->processor = __METHOD__;
-        if (isset($id)) {
+        if (self::isValidId($id)) {
             $backup_dir  = Backup::getBackupDir();
             $status_file = "{$backup_dir}/{$id}/upload_status";
         } else {

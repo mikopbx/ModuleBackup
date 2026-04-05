@@ -81,12 +81,10 @@ const automaticBackup = {
 
 	onChangeMode(){
 		let val = automaticBackup.$ftpMode.val();
-		if (val === '1') {
-			automaticBackup.$ftpPort.parent().show();
-		}else if(val === '3'){
-			automaticBackup.$ftpPort.parent().hide();
+		if (val === '3') {
+			$('#ftp-port-field').hide();
 		} else {
-			automaticBackup.$ftpPort.parent().show();
+			$('#ftp-port-field').show();
 		}
 	},
 

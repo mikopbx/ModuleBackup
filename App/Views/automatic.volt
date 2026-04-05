@@ -1,4 +1,8 @@
 <form method="post" action="module-backup/automatic" class="ui form large" id="backup-automatic-form">
+
+{# Скрываем module-status-toggle на этой странице #}
+<style>#module-status-toggle-segment { display: none !important; }</style>
+
 <div class="ui segment">
     <div class="field">
         <div class="ui toggle checkbox" id="enable-disable-toggle">
@@ -10,7 +14,7 @@
 <div class="two fields disability">
     <div class="field">
         <div class="sixteen wide field">
-            <label> {{ t._('bkp_FTPHost') }}</label>
+            <label>{{ t._('bkp_FTPHost') }}</label>
             {{ form.render('ftp_host') }}
         </div>
         <br>
@@ -20,7 +24,7 @@
                     <label>{{ t._('bkp_Mode') }}</label>
                     {{ form.render('ftp_sftp_mode') }}
                 </div>
-                <div class="five wide field">
+                <div class="five wide field" id="ftp-port-field">
                     <label>{{ t._('bkp_FTPPort') }}</label>
                     {{ form.render('ftp_port') }}
                 </div>
@@ -34,7 +38,6 @@
             <label>{{ t._('bkp_FTPSecret') }}</label>
             {{ form.render('ftp_secret') }}
         </div>
-
         <div class="sixteen wide field">
             <label>{{ t._('bkp_FTPPath') }}</label>
             {{ form.render('ftp_path') }}
@@ -70,7 +73,6 @@
             </div>
         {% endfor %}
     </div>
-
 </div>
 <div class="ui segment disability">
     <div class="field">

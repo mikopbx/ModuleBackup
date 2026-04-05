@@ -1,6 +1,6 @@
 /*
  * MikoPBX - free phone system for small business
- * Copyright (C) 2017-2021 Alexey Portnov and Nikolay Beketov
+ * Copyright (C) 2017-2024 Alexey Portnov and Nikolay Beketov
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,40 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* Тестовая строка шаблон для восстановления архива */
-#backup-template-row {
-    display: none;
+/* Action buttons */
+.backup-action-buttons {
+    padding: 0 !important;
+    margin: 0 0 1em 0 !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.backup-action-buttons .button {
+    margin: 0 !important;
+}
+
+/* Upload progress */
+.backup-upload-progress {
+    margin-bottom: 1.5em !important;
+}
+
+/* Table styling */
+#existing-backup-files-table .status i.archive.icon {
+    color: #00b5ad;
+}
+
+#existing-backup-files-table .status i.spinner.icon {
+    color: #2185d0;
+}
+
+/* File size column */
+#existing-backup-files-table .file-size {
+    white-space: nowrap;
+}
+
+/* Row in progress */
+#existing-backup-files-table tr.backupIndex-file .status {
+    font-weight: 600;
+    white-space: nowrap;
 }
