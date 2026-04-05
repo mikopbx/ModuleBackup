@@ -86,6 +86,8 @@ const automaticBackup = {
 		} else {
 			$('#ftp-port-field').show();
 		}
+		// Переинициализируем форму с актуальными правилами валидации.
+		automaticBackup.initializeForm();
 	},
 
 	onEnableToggleChange() {
@@ -113,7 +115,13 @@ const automaticBackup = {
 	initializeForm() {
 		Form.$formObj = automaticBackup.$formObj;
 		Form.url = `${globalRootUrl}module-backup/save`;
-		Form.validateRules = automaticBackup.validateRules;
+		// Формируем правила валидации в зависимости от режима.
+		const rules = $.extend(true, {}, automaticBackup.validateRules);
+		if (automaticBackup.$ftpMode.val() === '3') {
+			// WebDAV не использует порт — убираем валидацию.
+			delete rules.ftp_port;
+		}
+		Form.validateRules = rules;
 		Form.cbBeforeSendForm = automaticBackup.cbBeforeSendForm;
 		Form.cbAfterSendForm = automaticBackup.cbAfterSendForm;
 		Form.initialize();
