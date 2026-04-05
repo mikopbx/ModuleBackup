@@ -2081,8 +2081,20 @@ class Backup extends PbxExtensionBase
                 }
                 Util::addRegularWWWRights($result_file);
             } else {
-                // Просто копируем файл.
-                Processes::mwExec("{$cpPath} '{$this->result_dir}{$filename}' '{$result_file}'", $arr_out);
+                // Обычный файл (не DB).
+                if (self::ARH_TYPE_IMG === $this->type) {
+                    // IMG: копируем из смонтированного образа.
+                    Processes::mwExec("{$cpPath} '{$this->result_dir}{$filename}' '{$result_file}'", $arr_out);
+                } else {
+                    // TAR: извлекаем файл напрямую из архива.
+                    $file_dir_restore = dirname($result_file);
+                    Util::mwMkdir($file_dir_restore);
+                    if ($result_file !== $filename) {
+                        Processes::mwExec("$tarPath --transform='flags=r;s|$filename|$result_file|' -Pxf $this->result_file $filename", $arr_out);
+                    } else {
+                        Processes::mwExec("$tarPath -Pxf $this->result_file $filename", $arr_out);
+                    }
+                }
             }
         } else {
             Processes::mwExec("{$sevenZaPath} e -y -r -spf '{$this->result_file}' '{$filename}'", $arr_out);
