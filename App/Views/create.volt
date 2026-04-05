@@ -1,3 +1,4 @@
+<style>#module-status-toggle-segment { display: none !important; }</style>
 <form method="post" action="module-backup/create" class="ui form large" id="backup-create-form">
 <div class="ui header">{{ t._('bkp_CreateBackupHeader') }}</div>
  {% for key, toggle in whatBackup %}

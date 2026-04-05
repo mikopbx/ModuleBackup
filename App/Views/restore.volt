@@ -1,3 +1,4 @@
+<style>#module-status-toggle-segment { display: none !important; }</style>
 <div class="ui modal" id="restore-modal-form">
     <div class="header">
         {{ t._('bkp_RestoreBackupTitle') }}
