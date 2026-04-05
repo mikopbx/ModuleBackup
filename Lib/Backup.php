@@ -1545,21 +1545,31 @@ class Backup extends PbxExtensionBase
 
     /**
      * Копирует батч обычных файлов в каталог dir-бекапа с сохранением структуры.
+     * Использует rsync (инкрементальность, один вызов на батч), fallback на cp.
      *
      * @param array $files
      */
     private function copyFilesToDir(array $files): void
     {
-        $cpPath = Util::which('cp');
-        $b_dir = "{$this->dirs['backup']}/{$this->id}";
-        foreach ($files as $file) {
-            if (!file_exists($file)) {
-                continue;
+        $b_dir = "{$this->dirs['backup']}/{$this->id}/files";
+        $rsyncPath = Util::which('rsync');
+        if (!empty($rsyncPath)) {
+            $tmpDir = $this->di->getShared('config')->path('core.tempDir');
+            $batchListFile = "$tmpDir/backup_rsync_" . getmypid() . '.txt';
+            file_put_contents($batchListFile, implode("\n", $files) . "\n");
+            Processes::mwExec("$rsyncPath -a --files-from='$batchListFile' / '$b_dir/'");
+            unlink($batchListFile);
+        } else {
+            // Fallback на cp.
+            $cpPath = Util::which('cp');
+            foreach ($files as $file) {
+                if (!file_exists($file)) {
+                    continue;
+                }
+                $destFile = "$b_dir$file";
+                Util::mwMkdir(dirname($destFile));
+                Processes::mwExec("$cpPath '$file' '$destFile'");
             }
-            $destFile = "$b_dir/files$file";
-            $destDir = dirname($destFile);
-            Util::mwMkdir($destDir);
-            Processes::mwExec("$cpPath '$file' '$destFile'");
         }
     }
 
