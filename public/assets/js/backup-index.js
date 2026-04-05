@@ -176,27 +176,24 @@ var backupIndex = {
         // Проверяем свободное место перед загрузкой.
         if (params.file && params.file.file && params.file.file.size) {
           var fileSizeMB = Math.round(params.file.file.size / 1024 / 1024);
-          BackupApi.BackupGetEstimatedSize(function (sizeData) {
-            if (sizeData === false) return;
-            // Получим свободное место через storage API.
-            $.api({
-              url: "".concat(globalRootUrl, "pbxcore/api/storage/list"),
-              on: 'now',
-              onSuccess: function onSuccess(response) {
-                if (response && response.data) {
-                  var freeSpaceMB = 0;
-                  $.each(response.data, function (i, disk) {
-                    if (disk.mounted && disk.mounted.indexOf('/storage/') === 0) {
-                      freeSpaceMB = parseInt(disk.free_space) || 0;
-                    }
-                  });
-                  var requiredMB = fileSizeMB * 2 + 500;
-                  if (freeSpaceMB > 0 && freeSpaceMB < requiredMB) {
-                    UserMessage.showError("".concat(globalTranslate.bkp_UploadError, "<br>") + "Free: ".concat(freeSpaceMB, " MB, required: ").concat(requiredMB, " MB"));
+          $.api({
+            url: "".concat(globalRootUrl, "pbxcore/api/storage/list"),
+            on: 'now',
+            onSuccess: function onSuccess(response) {
+              if (response && response.data) {
+                var freeSpaceMB = 0;
+                $.each(response.data, function (i, disk) {
+                  if (disk.mounted && disk.mounted.indexOf('/storage/') === 0) {
+                    freeSpaceMB = parseInt(disk.free_space) || 0;
+                    return false; // Берём первый storage-диск.
                   }
+                });
+                var requiredMB = fileSizeMB * 2 + 500;
+                if (freeSpaceMB > 0 && freeSpaceMB < requiredMB) {
+                  UserMessage.showError("".concat(globalTranslate.bkp_UploadError, "<br>") + "Free: ".concat(freeSpaceMB, " MB, required: ").concat(requiredMB, " MB"));
                 }
               }
-            });
+            }
           });
         }
         break;

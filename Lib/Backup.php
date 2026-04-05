@@ -315,8 +315,6 @@ class Backup extends PbxExtensionBase
 
     public static function unpackImgBackup($res, $backupDir, $data):PBXApiResult
     {
-        $du      = Util::which('du');
-        $awk     = Util::which('awk');
         $findPath = Util::which('find');
         $path_b_dir = '';
 
