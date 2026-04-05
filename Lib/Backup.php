@@ -1216,7 +1216,8 @@ class Backup extends PbxExtensionBase
             }
             $mountPoint = '';
             Storage::isStorageDiskMounted('', $mountPoint);
-            $mountPoint = trim($mountPoint);
+            // mountPoint может содержать несколько путей (основной + FUSE-маунты).
+            $mountPoint = trim(explode("\n", trim($mountPoint))[0]);
             foreach ($freeSpaceData as $storageData){
                 if(trim($storageData['mounted']) === $mountPoint){
                     $freeSpace = intval($storageData['free_space']);
