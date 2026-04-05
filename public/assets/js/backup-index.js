@@ -93,53 +93,67 @@ var backupIndex = {
       return;
     }
     backupIndex.$dummy.hide();
+    var needPolling = false;
     $.each(response, function (key, value) {
-      var $newRow = $("tr#".concat(value.id));
-      if ($newRow.length > 0) {
-        $newRow.remove();
+      var $row = $("tr#".concat(value.id));
+      var isNew = $row.length === 0;
+      if (isNew) {
+        $row = backupIndex.$templateRow.clone();
+        $row.attr('id', value.id);
+        $row.addClass('backupIndex-file');
       }
-      $newRow = backupIndex.$templateRow.clone();
-      $newRow.attr('id', value.id);
-      $newRow.addClass('backupIndex-file');
-      var arhDate = new Date(1000 * value.date);
-      var month = '' + (arhDate.getMonth() + 1);
-      var day = '' + arhDate.getDate();
-      if (month.length === 1) {
-        month = '0' + month;
+
+      // Дата — обновляем только при создании строки.
+      if (isNew) {
+        var arhDate = new Date(1000 * value.date);
+        var month = '' + (arhDate.getMonth() + 1);
+        var day = '' + arhDate.getDate();
+        if (month.length === 1) month = '0' + month;
+        if (day.length === 1) day = '0' + day;
+        var hours = '' + arhDate.getHours();
+        var minutes = '' + arhDate.getMinutes();
+        var seconds = '' + arhDate.getSeconds();
+        if (hours.length === 1) hours = '0' + hours;
+        if (minutes.length === 1) minutes = '0' + minutes;
+        if (seconds.length === 1) seconds = '0' + seconds;
+        $row.find('.create-date').html(arhDate.getFullYear() + '.' + month + '.' + day + ' ' + hours + ':' + minutes + ':' + seconds);
+        $row.find('.create-date').attr('data-order', value.date);
+        $row.find('.create-date').attr('data-sort', value.date);
       }
-      if (day.length === 1) {
-        day = '0' + day;
-      }
-      var hours = '' + arhDate.getHours();
-      var minutes = '' + arhDate.getMinutes();
-      var seconds = '' + arhDate.getSeconds();
-      if (hours.length === 1) hours = '0' + hours;
-      if (minutes.length === 1) minutes = '0' + minutes;
-      if (seconds.length === 1) seconds = '0' + seconds;
-      $newRow.find('.create-date').html(arhDate.getFullYear() + '.' + month + '.' + day + ' ' + hours + ':' + minutes + ':' + seconds);
-      $newRow.find('.create-date').attr('data-order', value.date);
-      $newRow.find('.create-date').attr('data-sort', value.date);
-      $newRow.find('.file-size').html("".concat(value.size, " MB"));
+
+      // Размер — обновляем всегда.
+      $row.find('.file-size').html("".concat(value.size, " MB"));
       if (value.pid.length + value.pid_recover.length > 0) {
-        $newRow.find('a').each(function (index, obj) {
-          $(obj).remove();
-        });
+        // Бекап в процессе.
         var percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
-        $newRow.find('.status').html("<i class=\"spinner loading icon\"></i> ".concat(parseInt(percentOfTotal, 10), " %"));
-        var $actionsCell = $newRow.find('td').last();
-        $actionsCell.html("<div class=\"ui small basic icon buttons action-buttons\">" + "<a href=\"#\" class=\"ui button stop-backup popuped\" data-value=\"".concat(value.id, "\" data-content=\"").concat(globalTranslate.bkp_StopCreateBackup, "\">") + "<i class=\"icon stop red\"></i></a></div>");
-        setTimeout(function () {
-          BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-        }, 3000);
-      } else {
-        $newRow.find('a').each(function (index, obj) {
+        $row.find('.status').html("<i class=\"spinner loading icon\"></i> ".concat(parseInt(percentOfTotal, 10), " %"));
+        // Кнопка стоп — обновляем только при создании или если кнопок нет.
+        if (isNew || $row.find('a.stop-backup').length === 0) {
+          var $actionsCell = $row.find('td').last();
+          $actionsCell.html("<div class=\"ui small basic icon buttons action-buttons\">" + "<a href=\"#\" class=\"ui button stop-backup popuped\" data-value=\"".concat(value.id, "\" data-content=\"").concat(globalTranslate.bkp_StopCreateBackup, "\">") + "<i class=\"icon stop red\"></i></a></div>");
+        }
+        needPolling = true;
+      } else if (isNew || $row.find('a.download').length === 0) {
+        // Бекап завершён — устанавливаем кнопки действий.
+        $row.find('.status').html('<i class="archive icon"></i>');
+        // Восстанавливаем кнопки из шаблона.
+        var $freshRow = backupIndex.$templateRow.clone();
+        var _$actionsCell = $row.find('td').last();
+        _$actionsCell.html($freshRow.find('td').last().html());
+        $row.find('a').each(function (index, obj) {
           $(obj).attr('href', $(obj).attr('href') + value.id);
           $(obj).attr('data-value', value.id);
         });
-        $newRow.find('.status').html('<i class="archive icon"></i>');
       }
-      $newRow.appendTo('#existing-backup-files-table');
+      if (isNew) {
+        $row.appendTo('#existing-backup-files-table');
+      }
     });
+    if (needPolling) {
+      setTimeout(function () {
+        BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
+      }, 3000);
+    }
     var idTable = $('#existing-backup-files-table');
     if (idTable.attr('data-dt-init') !== '1') {
       idTable.DataTable({

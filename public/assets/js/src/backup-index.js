@@ -91,58 +91,75 @@ const backupIndex = {
 			return;
 		}
 		backupIndex.$dummy.hide();
+		let needPolling = false;
 		$.each(response, (key, value) => {
-			let $newRow = $(`tr#${value.id}`);
-			if ($newRow.length > 0) {
-				$newRow.remove();
-			}
-			$newRow = backupIndex.$templateRow.clone();
-			$newRow.attr('id', value.id);
-			$newRow.addClass('backupIndex-file');
-			const arhDate = new Date(1000 * value.date);
-			let month = ''+(arhDate.getMonth()+1);
-			let day   = ''+arhDate.getDate();
-			if(month.length === 1){
-				month = '0' + month;
-			}
-			if(day.length === 1){
-				day = '0' + day;
-			}
-			let hours = '' + arhDate.getHours();
-			let minutes = '' + arhDate.getMinutes();
-			let seconds = '' + arhDate.getSeconds();
-			if (hours.length === 1) hours = '0' + hours;
-			if (minutes.length === 1) minutes = '0' + minutes;
-			if (seconds.length === 1) seconds = '0' + seconds;
-			$newRow.find('.create-date').html(arhDate.getFullYear() + '.' + month + '.' + day + ' ' + hours + ':' + minutes + ':' + seconds);
-			$newRow.find('.create-date').attr('data-order', value.date);
-			$newRow.find('.create-date').attr('data-sort', value.date);
+			let $row = $(`tr#${value.id}`);
+			const isNew = ($row.length === 0);
 
-			$newRow.find('.file-size').html(`${value.size} MB`);
+			if (isNew) {
+				$row = backupIndex.$templateRow.clone();
+				$row.attr('id', value.id);
+				$row.addClass('backupIndex-file');
+			}
+
+			// Дата — обновляем только при создании строки.
+			if (isNew) {
+				const arhDate = new Date(1000 * value.date);
+				let month = ''+(arhDate.getMonth()+1);
+				let day   = ''+arhDate.getDate();
+				if(month.length === 1) month = '0' + month;
+				if(day.length === 1) day = '0' + day;
+				let hours = '' + arhDate.getHours();
+				let minutes = '' + arhDate.getMinutes();
+				let seconds = '' + arhDate.getSeconds();
+				if (hours.length === 1) hours = '0' + hours;
+				if (minutes.length === 1) minutes = '0' + minutes;
+				if (seconds.length === 1) seconds = '0' + seconds;
+				$row.find('.create-date').html(arhDate.getFullYear() + '.' + month + '.' + day + ' ' + hours + ':' + minutes + ':' + seconds);
+				$row.find('.create-date').attr('data-order', value.date);
+				$row.find('.create-date').attr('data-sort', value.date);
+			}
+
+			// Размер — обновляем всегда.
+			$row.find('.file-size').html(`${value.size} MB`);
+
 			if (value.pid.length + value.pid_recover.length > 0) {
-				$newRow.find('a').each((index, obj) => {
-					$(obj).remove();
-				});
+				// Бекап в процессе.
 				const percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
-				$newRow.find('.status').html(`<i class="spinner loading icon"></i> ${parseInt(percentOfTotal, 10)} %`);
-				const $actionsCell = $newRow.find('td').last();
-				$actionsCell.html(
-					`<div class="ui small basic icon buttons action-buttons">` +
-					`<a href="#" class="ui button stop-backup popuped" data-value="${value.id}" data-content="${globalTranslate.bkp_StopCreateBackup}">` +
-					`<i class="icon stop red"></i></a></div>`
-				);
-				setTimeout(() => {
-					BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-				}, 3000);
-			} else {
-				$newRow.find('a').each((index, obj) => {
+				$row.find('.status').html(`<i class="spinner loading icon"></i> ${parseInt(percentOfTotal, 10)} %`);
+				// Кнопка стоп — обновляем только при создании или если кнопок нет.
+				if (isNew || $row.find('a.stop-backup').length === 0) {
+					const $actionsCell = $row.find('td').last();
+					$actionsCell.html(
+						`<div class="ui small basic icon buttons action-buttons">` +
+						`<a href="#" class="ui button stop-backup popuped" data-value="${value.id}" data-content="${globalTranslate.bkp_StopCreateBackup}">` +
+						`<i class="icon stop red"></i></a></div>`
+					);
+				}
+				needPolling = true;
+			} else if (isNew || $row.find('a.download').length === 0) {
+				// Бекап завершён — устанавливаем кнопки действий.
+				$row.find('.status').html('<i class="archive icon"></i>');
+				// Восстанавливаем кнопки из шаблона.
+				const $freshRow = backupIndex.$templateRow.clone();
+				const $actionsCell = $row.find('td').last();
+				$actionsCell.html($freshRow.find('td').last().html());
+				$row.find('a').each((index, obj) => {
 					$(obj).attr('href', $(obj).attr('href') + value.id);
 					$(obj).attr('data-value', value.id);
 				});
-				$newRow.find('.status').html('<i class="archive icon"></i>');
 			}
-			$newRow.appendTo('#existing-backup-files-table');
+
+			if (isNew) {
+				$row.appendTo('#existing-backup-files-table');
+			}
 		});
+
+		if (needPolling) {
+			setTimeout(() => {
+				BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
+			}, 3000);
+		}
 
 		let idTable = $('#existing-backup-files-table');
 		if(idTable.attr('data-dt-init') !== '1'){
