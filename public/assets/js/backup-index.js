@@ -146,6 +146,7 @@ var backupIndex = {
         'order': [[1, 'dsc']],
         paging: false,
         searching: false,
+        info: false,
         columns: [{
           orderable: false
         }, {
