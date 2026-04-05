@@ -9,6 +9,7 @@
  */
 
 /* global globalRootUrl, globalTranslate, Form, SemanticLocalization, BackupApi */
+
 var automaticBackup = {
   $timeStart: $('#time-start'),
   $everySelect: $('#every'),
@@ -52,7 +53,6 @@ var automaticBackup = {
     if (!$('#module-status-toggle').checkbox('is checked')) {
       window.location = "".concat(globalRootUrl, "module-backup/index");
     }
-
     automaticBackup.$everySelect.dropdown();
     automaticBackup.$timeStart.calendar({
       firstDayOfWeek: SemanticLocalization.calendarFirstDayOfWeek,
@@ -73,13 +73,10 @@ var automaticBackup = {
   },
   onChangeMode: function onChangeMode() {
     var val = automaticBackup.$ftpMode.val();
-
-    if (val === '1') {
-      automaticBackup.$ftpPort.parent().show();
-    } else if (val === '3') {
-      automaticBackup.$ftpPort.parent().hide();
+    if (val === '3') {
+      $('#ftp-port-field').hide();
     } else {
-      automaticBackup.$ftpPort.parent().show();
+      $('#ftp-port-field').show();
     }
   },
   onEnableToggleChange: function onEnableToggleChange() {
