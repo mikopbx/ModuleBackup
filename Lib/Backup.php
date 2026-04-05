@@ -1216,8 +1216,9 @@ class Backup extends PbxExtensionBase
             }
             $mountPoint = '';
             Storage::isStorageDiskMounted('', $mountPoint);
+            $mountPoint = trim($mountPoint);
             foreach ($freeSpaceData as $storageData){
-                if($storageData['mounted'] === $mountPoint){
+                if(trim($storageData['mounted']) === $mountPoint){
                     $freeSpace = intval($storageData['free_space']);
                 }
             }
