@@ -9,7 +9,7 @@
 /* global BackupApi, PbxApi, globalTranslate, Resumable, globalRootUrl, UserMessage */
 
 const mergingCheckWorker = {
-	timeOut: 3000,
+	timeOut: 5000,
 	timeOutHandle: '',
 	errorCounts: 0,
 	$progressBarLabel: $('#upload-progress-bar').find('.label'),

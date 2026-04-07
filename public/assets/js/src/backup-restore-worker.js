@@ -9,7 +9,7 @@
 /* global BackupApi, globalTranslate, globalRootUrl */
 
 const restoreWorker = {
-	timeOut: 3000,
+	timeOut: 5000,
 	timeOutHandle: '',
 	$submitButton: $('#submitbutton'),
 	waitRestoreId: undefined,

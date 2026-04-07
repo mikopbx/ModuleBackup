@@ -85,9 +85,7 @@ const backupIndex = {
 	cbBackupGetFilesListAfterResponse(response) {
 		backupIndex.$dummy.show();
 		if (response.length === 0 || response === false) {
-			setTimeout(() => {
-				BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-			}, 3000);
+			// Нет данных — не опрашиваем бесконечно.
 			return;
 		}
 		backupIndex.$dummy.hide();
@@ -158,7 +156,7 @@ const backupIndex = {
 		if (needPolling) {
 			setTimeout(() => {
 				BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-			}, 3000);
+			}, 5000);
 		}
 
 		let idTable = $('#existing-backup-files-table');

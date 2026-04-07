@@ -87,9 +87,7 @@ var backupIndex = {
   cbBackupGetFilesListAfterResponse: function cbBackupGetFilesListAfterResponse(response) {
     backupIndex.$dummy.show();
     if (response.length === 0 || response === false) {
-      setTimeout(function () {
-        BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-      }, 3000);
+      // Нет данных — не опрашиваем бесконечно.
       return;
     }
     backupIndex.$dummy.hide();
@@ -152,7 +150,7 @@ var backupIndex = {
     if (needPolling) {
       setTimeout(function () {
         BackupApi.BackupGetFilesList(backupIndex.cbBackupGetFilesListAfterResponse);
-      }, 3000);
+      }, 5000);
     }
     var idTable = $('#existing-backup-files-table');
     if (idTable.attr('data-dt-init') !== '1') {

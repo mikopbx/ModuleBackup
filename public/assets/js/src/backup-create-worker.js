@@ -9,7 +9,7 @@
 /* global BackupApi, globalRootUrl */
 
 const backupCreateWorker = {
-	timeOut: 3000,
+	timeOut: 5000,
 	timeOutHandle: '',
 	$submitButton: $('#submitbutton'),
 	$stopCreateBackup: $('#stopbackupbutton'),
