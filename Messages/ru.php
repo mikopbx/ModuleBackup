@@ -46,6 +46,7 @@ return [
     'bkp_SettingsRestoredWaitReboot'    => 'Настройки восстановлены, станция перезагружается...',
     'bkp_UploadError'                   => 'Не удалось загрузить файл бекапа',
     'bkp_StopCreateBackup'              => 'Отменить создание резервной копии',
+    'bkp_PreparingFileList'             => 'Подготовка',
     'bkp_DeleteFiles'                   => 'Удалить файл бекапа',
     'bkp_RestoreBackupHeader'           => 'Что необходимо восстановить?',
     'bkp_CreateBackupHeader'            => 'Что необходимо архивировать?',

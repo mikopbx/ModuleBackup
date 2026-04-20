@@ -124,7 +124,8 @@ var backupIndex = {
       if (value.pid.length + value.pid_recover.length > 0) {
         // Бекап в процессе.
         var percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
-        $row.find('.status').html("<i class=\"spinner loading icon\"></i> ".concat(parseInt(percentOfTotal, 10), " %"));
+        var stageLabel = value.stage === 'preparing' ? "".concat(globalTranslate.bkp_PreparingFileList, " ") : '';
+        $row.find('.status').html("<i class=\"spinner loading icon\"></i> ".concat(stageLabel).concat(parseInt(percentOfTotal, 10), " %"));
         // Кнопка стоп — обновляем только при создании или если кнопок нет.
         if (isNew || $row.find('a.stop-backup').length === 0) {
           var $actionsCell = $row.find('td').last();
@@ -251,4 +252,5 @@ var backupIndex = {
 $(document).ready(function () {
   backupIndex.initialize();
 });
+
 //# sourceMappingURL=backup-index.js.map
