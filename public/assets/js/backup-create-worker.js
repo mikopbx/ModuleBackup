@@ -8,7 +8,7 @@
  *
  */
 
-/* global BackupApi, globalRootUrl */
+/* global BackupApi, globalRootUrl, globalTranslate */
 
 var backupCreateWorker = {
   timeOut: 5000,
@@ -60,16 +60,17 @@ var backupCreateWorker = {
         if (backupCreateWorker.waitBackupId === value.id) {
           backupCreateWorker.$submitButton.hide();
           backupCreateWorker.$stopCreateBackup.attr('data-value', backupCreateWorker.waitBackupId).show();
-          percentOfTotal = 100 * (value.progress / value.total);
+          percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
+          var activeText = value.stage === 'preparing' ? "".concat(globalTranslate.bkp_PreparingFileList, ": {value} / {total}") : '{value} of {total} done';
           backupCreateWorker.$progressBar.progress({
             duration: value.progress,
             total: value.total,
             percent: parseInt(percentOfTotal, 10),
             text: {
-              active: '{value} of {total} done'
+              active: activeText
             }
           });
-          if (value.total === value.progress && backupCreateWorker.backupIsPreparing) {
+          if (value.total === value.progress && value.stage !== 'preparing' && backupCreateWorker.backupIsPreparing) {
             window.location = "".concat(globalRootUrl, "module-backup/index");
           }
           backupCreateWorker.backupIsPreparing = value.pid.length > 0;
@@ -84,4 +85,5 @@ var backupCreateWorker = {
     }
   }
 };
+
 //# sourceMappingURL=backup-create-worker.js.map
