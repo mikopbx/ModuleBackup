@@ -41,6 +41,7 @@ class Backup extends PbxExtensionBase
     private string $result_dir;
     private string $progress_file;
     private string $progress_file_recover;
+    private string $stage_file;
     private string $config_file;
     private array $options;
     private string $options_recover_file;
@@ -138,6 +139,7 @@ class Backup extends PbxExtensionBase
         $this->config_file           = "{$this->dirs['backup']}/{$this->id}/config.json";
         $this->options_recover_file  = "{$this->dirs['backup']}/{$this->id}/options_recover.json";
         $this->progress_file_recover = "{$this->dirs['backup']}/{$this->id}/progress_recover.txt";
+        $this->stage_file            = "{$this->dirs['backup']}/{$this->id}/stage.txt";
 
         if (!is_array($options) && file_exists($this->config_file)) {
             $this->options = json_decode(file_get_contents($this->config_file), true) ?? [];
@@ -725,6 +727,12 @@ class Backup extends PbxExtensionBase
                 if (file_exists($config_file)) {
                     $config = json_decode(file_get_contents($config_file), true);
                 }
+                // Фаза выполнения: 'preparing' (формирование списка файлов) или '' (архивирование).
+                $stage = '';
+                $stageFile = "{$dirs['backup']}/{$base_filename}/stage.txt";
+                if (file_exists($stageFile)) {
+                    $stage = trim((string)file_get_contents($stageFile));
+                }
                 // Вычислим timestamp.
                 $arr_fname        = explode('_', $base_filename);
                 $data = [
@@ -732,6 +740,7 @@ class Backup extends PbxExtensionBase
                     'size'             => $size,
                     'progress'         => $progress,
                     'total'            => $total,
+                    'stage'            => $stage,
                     'config'           => $config,
                     'pid'              => $pid,
                     'id'               => $base_filename,
@@ -1290,23 +1299,28 @@ class Backup extends PbxExtensionBase
     public function createArchive(): array
     {
         file_put_contents($this->errorFile, '');
+        // Переходим в фазу подготовки: сборка списка файлов и архивов модулей.
+        file_put_contents($this->stage_file, 'preparing');
         if (file_exists($this->progress_file)) {
             $file_data      = file_get_contents($this->progress_file);
             $data           = explode('/', $file_data);
             $this->progress = intval(trim($data[0]));
         }else{
-            file_put_contents($this->progress_file, '0');
+            // Изначально показываем 0/1 — чтобы percent считался как 0, а не "не определён".
+            file_put_contents($this->progress_file, '0/1');
         }
         if(!$this->checkDiskSpace()){
             $msg = 'There is not enough free disk space.';
             file_put_contents($this->errorFile, $msg);
             Util::sysLogMsg(__CLASS__, $msg);
+            @unlink($this->stage_file);
             return ['result' => 'ERROR', 'message' => $msg];
         }
         if ( ! file_exists("{$this->dirs['backup']}/{$this->id}")) {
             $msg = 'Unable to create directory for the backup.';
             file_put_contents($this->errorFile, $msg);
             Util::sysLogMsg(__CLASS__, $msg);
+            @unlink($this->stage_file);
             return ['result' => 'ERROR', 'message' => $msg];
         }
         $result = $this->createFileList();
@@ -1314,6 +1328,7 @@ class Backup extends PbxExtensionBase
             $msg = 'Unable to create file list. Failed to create file.';
             file_put_contents($this->errorFile, $msg);
             Util::sysLogMsg(__CLASS__, $msg);
+            @unlink($this->stage_file);
             return ['result' => 'ERROR', 'message' => $msg];
         }
 
@@ -1321,6 +1336,7 @@ class Backup extends PbxExtensionBase
             $msg = 'File list not found.';
             file_put_contents($this->errorFile, $msg);
             Util::sysLogMsg(__CLASS__, $msg);
+            @unlink($this->stage_file);
             return ['result' => 'ERROR', 'message' => $msg];
         }
         $lines = file($this->file_list);
@@ -1328,11 +1344,16 @@ class Backup extends PbxExtensionBase
             $msg = 'File list empty.';
             file_put_contents($this->errorFile, $msg);
             Util::sysLogMsg(__CLASS__, $msg);
+            @unlink($this->stage_file);
             return ['result' => 'ERROR', 'message' => $msg];
         }
         $count_files = count($lines);
         $batchSize   = $this->getBatchSize($count_files);
         file_put_contents($this->progress_file, "{$this->progress}/{$count_files}");
+        // Подготовка завершена — переходим в фазу архивации.
+        if (file_exists($this->stage_file)) {
+            unlink($this->stage_file);
+        }
 
         $batchFiles = [];
         while ($this->progress < $count_files) {
@@ -1424,7 +1445,7 @@ class Backup extends PbxExtensionBase
      *
      * @return string строки для flist.txt
      */
-    private function collectModuleFiles(): string
+    private function collectModuleFiles(int &$prepDone = 0, int $prepTotal = 1): string
     {
         $flist = '';
         $customModulesDir = $this->dirs['custom_modules'];
@@ -1484,6 +1505,9 @@ class Backup extends PbxExtensionBase
                     }
                 }
             }
+            // Отражаем прогресс фазы подготовки: модуль обработан.
+            $prepDone++;
+            file_put_contents($this->progress_file, "{$prepDone}/{$prepTotal}");
         }
         return $flist;
     }
@@ -1681,10 +1705,30 @@ class Backup extends PbxExtensionBase
             return $result;
         }
 
+        // Считаем общее число шагов подготовки для отображения прогресса.
+        // Шаги: модули (каждый = 1 tar.gz) + find по media + find по records.
+        $moduleCount = $this->countModuleCandidates();
+        $prepTotal   = $moduleCount;
+        if (($this->options['backup-sound-files'] ?? '') === '1') {
+            $prepTotal++;
+        }
+        if (($this->options['backup-records'] ?? '') === '1' && $this->remote) {
+            $prepTotal++;
+        }
+        if ($prepTotal < 1) {
+            $prepTotal = 1;
+        }
+        $prepDone = 0;
+        file_put_contents($this->progress_file, "{$prepDone}/{$prepTotal}");
+
         $flist = '';
         if (($this->options['backup-config'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-config:' . $this->dirs['settings_db_path'] . "\n", FILE_APPEND);
-            $flist .= $this->collectModuleFiles();
+            $flist .= $this->collectModuleFiles($prepDone, $prepTotal);
+        } else {
+            // backup-config отключён — модули не сжимаем, но шаги учтены в prepTotal.
+            $prepDone += $moduleCount;
+            file_put_contents($this->progress_file, "{$prepDone}/{$prepTotal}");
         }
         if (($this->options['backup-cdr'] ?? '') === '1') {
             file_put_contents($this->file_list, 'backup-cdr:' . $this->dirs['cdr_db_path'] . "\n", FILE_APPEND);
@@ -1699,6 +1743,8 @@ class Backup extends PbxExtensionBase
             foreach ($out as $filename) {
                 $flist .= 'backup-sound-files:' . $filename . "\n";
             }
+            $prepDone++;
+            file_put_contents($this->progress_file, "{$prepDone}/{$prepTotal}");
         }
         if (($this->options['backup-records'] ?? '') === '1') {
             if ($this->remote) {
@@ -1708,11 +1754,37 @@ class Backup extends PbxExtensionBase
                 foreach ($out as $filename) {
                     $flist .= 'backup-records:' . $filename . "\n";
                 }
+                $prepDone++;
+                file_put_contents($this->progress_file, "{$prepDone}/{$prepTotal}");
             }
         }
         file_put_contents($this->file_list, $flist, FILE_APPEND);
 
         return true;
+    }
+
+    /**
+     * Подсчитывает количество кандидатов-модулей (каталог с module.json).
+     * Используется для расчёта прогресса фазы подготовки.
+     */
+    private function countModuleCandidates(): int
+    {
+        $customModulesDir = $this->dirs['custom_modules'];
+        if (!is_dir($customModulesDir)) {
+            return 0;
+        }
+        $count = 0;
+        $entries = scandir($customModulesDir) ?: [];
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $moduleDir = "$customModulesDir/$entry";
+            if (is_dir($moduleDir) && file_exists("$moduleDir/module.json")) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     /**

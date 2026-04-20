@@ -44,6 +44,7 @@ return [
     'bkp_SettingsRestoredWaitReboot' => 'Settings was restored',
     'bkp_UploadError' => 'Failed to load backup file',
     'bkp_StopCreateBackup' => 'Cancel backup',
+    'bkp_PreparingFileList' => 'Preparing',
     'bkp_DeleteFiles' => 'Delete backup',
     'bkp_RestoreBackupHeader' => 'Select restore options',
     'bkp_CreateBackupHeader' => 'Select backup options',
