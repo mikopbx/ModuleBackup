@@ -64,18 +64,16 @@ const backupCreateWorker = {
 						.attr('data-value', backupCreateWorker.waitBackupId)
 						.show();
 					percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
-					const activeText = value.stage === 'preparing'
-						? `${globalTranslate.bkp_PreparingFileList}: {value} / {total}`
-						: '{value} of {total} done';
+					const labelText = value.stage === 'preparing'
+						? `${globalTranslate.bkp_PreparingFileList}: ${value.progress} / ${value.total}`
+						: `${value.progress} / ${value.total}`;
 
 					backupCreateWorker.$progressBar.progress({
 						total: value.total,
 						value: value.progress,
 						percent: parseInt(percentOfTotal, 10),
-						text: {
-							active: activeText,
-						},
 					});
+					backupCreateWorker.$progressBar.find('.label').text(labelText);
 					if (value.total === value.progress
 						&& value.stage !== 'preparing'
 						&& backupCreateWorker.backupIsPreparing) {

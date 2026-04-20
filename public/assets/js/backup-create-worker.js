@@ -61,15 +61,13 @@ var backupCreateWorker = {
           backupCreateWorker.$submitButton.hide();
           backupCreateWorker.$stopCreateBackup.attr('data-value', backupCreateWorker.waitBackupId).show();
           percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
-          var activeText = value.stage === 'preparing' ? "".concat(globalTranslate.bkp_PreparingFileList, ": {value} / {total}") : '{value} of {total} done';
+          var labelText = value.stage === 'preparing' ? "".concat(globalTranslate.bkp_PreparingFileList, ": ").concat(value.progress, " / ").concat(value.total) : "".concat(value.progress, " / ").concat(value.total);
           backupCreateWorker.$progressBar.progress({
             total: value.total,
             value: value.progress,
-            percent: parseInt(percentOfTotal, 10),
-            text: {
-              active: activeText
-            }
+            percent: parseInt(percentOfTotal, 10)
           });
+          backupCreateWorker.$progressBar.find('.label').text(labelText);
           if (value.total === value.progress && value.stage !== 'preparing' && backupCreateWorker.backupIsPreparing) {
             window.location = "".concat(globalRootUrl, "module-backup/index");
           }
