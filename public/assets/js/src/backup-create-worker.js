@@ -69,8 +69,8 @@ const backupCreateWorker = {
 						: '{value} of {total} done';
 
 					backupCreateWorker.$progressBar.progress({
-						duration: value.progress,
 						total: value.total,
+						value: value.progress,
 						percent: parseInt(percentOfTotal, 10),
 						text: {
 							active: activeText,

@@ -63,8 +63,8 @@ var backupCreateWorker = {
           percentOfTotal = value.total > 0 ? 100 * (value.progress / value.total) : 0;
           var activeText = value.stage === 'preparing' ? "".concat(globalTranslate.bkp_PreparingFileList, ": {value} / {total}") : '{value} of {total} done';
           backupCreateWorker.$progressBar.progress({
-            duration: value.progress,
             total: value.total,
+            value: value.progress,
             percent: parseInt(percentOfTotal, 10),
             text: {
               active: activeText
