@@ -232,24 +232,12 @@ class Backup extends PbxExtensionBase
             return $res;
         }
 
-        // Проверка свободного места на диске перед распаковкой.
-        $uploadedFileSize = filesize($data['temp_file']);
-        $storage = new Storage();
-        $storageData = $storage->getAllHdd();
-        $mountPoint = '';
-        Storage::isStorageDiskMounted('', $mountPoint);
-        $freeSpace = 0;
-        foreach ($storageData as $disk) {
-            if (($disk['mounted'] ?? '') === $mountPoint) {
-                $freeSpace = intval($disk['free_space']) * 1024 * 1024; // MB → bytes
-                break;
-            }
-        }
-        // Для распаковки нужно минимум 2x размер файла (архив + содержимое) + 500MB запас.
-        $requiredSpace = ($uploadedFileSize * 2) + (500 * 1024 * 1024);
-        if ($freeSpace > 0 && $freeSpace < $requiredSpace) {
-            $freeSpaceMB = round($freeSpace / 1024 / 1024);
-            $requiredMB = round($requiredSpace / 1024 / 1024);
+        // Проверка свободного места перед распаковкой: нужно ≥ 2x размер файла
+        // (архив + содержимое) + 500 MB запас.
+        $uploadedFileSizeMB = intval(filesize($data['temp_file']) / 1024 / 1024);
+        $freeSpaceMB = self::getFreeSpaceOnMountPoint($backupDir);
+        $requiredMB = ($uploadedFileSizeMB * 2) + 500;
+        if ($freeSpaceMB > 0 && $freeSpaceMB < $requiredMB) {
             $res->messages[] = "Not enough disk space. Free: {$freeSpaceMB} MB, required: {$requiredMB} MB";
             return $res;
         }
@@ -1212,63 +1200,26 @@ class Backup extends PbxExtensionBase
             }
             $needSpace += intval($estimatedSize->getResult()['data'][$key]);
         }
-        if($this->remote === true){
-            // Это резервное копирование на удаленнный сервер.
-            $freeSpace = $this->getFreeSpaceOnMountPoint($this->dirs['backup']);
-        }else{
-            // Резервное копирование на локальный диск.
-            if(Util::isDocker()){
-                $freeSpaceData = $this->getDockerHdd();
-            }else{
-                $storage = new Storage();
-                $freeSpaceData = $storage->getAllHdd();
-            }
-            // Ищем основной storage-диск (реальная FS, не FUSE/tmpfs).
-            foreach ($freeSpaceData as $storageData){
-                $mounted = trim($storageData['mounted'] ?? '');
-                if (strpos($mounted, '/storage/usbdisk') === 0) {
-                    $freeSpace = intval($storageData['free_space']);
-                    break;
-                }
-            }
-        }
+        // df по фактическому пути — работает и для выделенного диска, и для
+        // system-disk (когда /storage/usbdisk1 — раздел системного диска).
+        $freeSpace = self::getFreeSpaceOnMountPoint($this->dirs['backup']);
 
         return ($freeSpace > $needSpace && ($freeSpace - $needSpace) > 500);
     }
 
-    private function getDockerHdd():array{
-        $out = [];
-        $grepPath = Util::which('grep');
-        $dfPath = Util::which('df');
-        $awkPath = Util::which('awk');
-        Processes::mwExec(
-            "{$dfPath} -k /storage | {$awkPath}  '{ print \$1 \"|\" $3 \"|\" \$4} ' | {$grepPath} -v 'Available'",
-            $out
-        );
-        $res_disks = [];
-        $disk_data = explode('|', implode(" ", $out));
-        if (count($disk_data) >= 3) {
-            $m_size = round(($disk_data[1] + $disk_data[2]) / 1024, 1);
-            $res_disks[] = [
-                'id' => $disk_data[0],
-                'size' => "" . $m_size,
-                'size_text' => "" . $m_size . " Mb",
-                'vendor' => 'Docker',
-                'mounted' => '/storage/usbdisk1/',
-                'free_space' => round($disk_data[2] / 1024, 1),
-                'partitions' => [],
-                'sys_disk' => true,
-            ];
-        }
-        return $res_disks;
-    }
-
-    private function getFreeSpaceOnMountPoint($mountPoint):string{
+    /**
+     * Возвращает свободное место в MB по фактическому пути (df сам резолвит
+     * подкаталог в точку монтирования). `timeout 3` защищает от зависания
+     * на stale FUSE/FTP/SFTP маунте.
+     */
+    private static function getFreeSpaceOnMountPoint(string $mountPoint): int
+    {
         $pathDf = Util::which('df');
-        $pathGrep = Util::which('grep');
+        $pathTail = Util::which('tail');
         $pathAwk = Util::which('awk');
+        $pathTimeout = Util::which('timeout');
         $escapedMountPoint = escapeshellarg($mountPoint);
-        return (string)intval(shell_exec("$pathDf -m -a -P | $pathGrep $escapedMountPoint | $pathAwk '{print $4}'"));
+        return intval(shell_exec("$pathTimeout 3 $pathDf -m -P $escapedMountPoint 2>/dev/null | $pathTail -n 1 | $pathAwk '{print \$4}'"));
     }
 
     /**
