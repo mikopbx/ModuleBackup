@@ -8,7 +8,7 @@
  *
  */
 
-/* global BackupApi, PbxApi, FilesAPI, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
+/* global BackupApi, FilesAPI, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
 
 var backupIndex = {
   $templateRow: $('#backup-template-row'),
@@ -18,7 +18,6 @@ var backupIndex = {
   $progressBarLabel: $('#upload-progress-bar').find('.label'),
   $statusToggle: $('#module-status-toggle'),
   $body: $('body'),
-  resumable: null,
   initialize: function initialize() {
     backupIndex.checkStatusToggle();
     window.addEventListener('ModuleStatusChanged', backupIndex.checkStatusToggle);
@@ -74,7 +73,6 @@ var backupIndex = {
       query: function query(file) {
         var originalName = file.name || file.fileName;
         return {
-          resumableFilename: originalName,
           category: backupIndex.getUploadCategory(originalName)
         };
       }

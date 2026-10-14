@@ -6,7 +6,7 @@
  *
  */
 
-/* global BackupApi, PbxApi, FilesAPI, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
+/* global BackupApi, FilesAPI, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
 
 const backupIndex = {
 	$templateRow: $('#backup-template-row'),
@@ -16,7 +16,6 @@ const backupIndex = {
 	$progressBarLabel: $('#upload-progress-bar').find('.label'),
 	$statusToggle: $('#module-status-toggle'),
 	$body: $('body'),
-	resumable: null,
 	initialize() {
 		backupIndex.checkStatusToggle();
 		window.addEventListener('ModuleStatusChanged', backupIndex.checkStatusToggle);
@@ -72,7 +71,6 @@ const backupIndex = {
 			query(file) {
 				const originalName = file.name || file.fileName;
 				return {
-					resumableFilename: originalName,
 					category: backupIndex.getUploadCategory(originalName),
 				};
 			},
