@@ -8,7 +8,7 @@
  *
  */
 
-/* global BackupApi, PbxApi, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
+/* global BackupApi, FilesAPI, globalTranslate, Resumable, globalRootUrl, UserMessage, mergingCheckWorker */
 
 var backupIndex = {
   $templateRow: $('#backup-template-row'),
@@ -18,7 +18,6 @@ var backupIndex = {
   $progressBarLabel: $('#upload-progress-bar').find('.label'),
   $statusToggle: $('#module-status-toggle'),
   $body: $('body'),
-  resumable: null,
   initialize: function initialize() {
     backupIndex.checkStatusToggle();
     window.addEventListener('ModuleStatusChanged', backupIndex.checkStatusToggle);
@@ -39,7 +38,48 @@ var backupIndex = {
       var id = $(e.target).closest('a').attr('data-value');
       BackupApi.BackupStop(id, backupIndex.cbAfterStopBackup);
     });
-    PbxApi.SystemUploadFileAttachToBtn('uploadbtn', ['img', 'zip', 'xml', 'csv', 'tar'], backupIndex.cbResumable);
+    backupIndex.attachUploadButton();
+  },
+  /**
+   * Категория для UploadFileAction зависит от расширения файла:
+   * - img требует category=firmware (иначе сервер отклоняет .img с sf_UploadImgOnlyForFirmware);
+   * - zip/tar проходят проверку MIME только с category=archive;
+   * - xml/csv (конфиги Askozia) не входят ни в одну категорию — передаём '' (unspecified),
+   *   чтобы сервер пропустил проверку MIME/категории для них.
+   * FilesAPI.attachToBtn принимает только одну статичную category на все файлы кнопки,
+   * поэтому здесь используется кастомный query с category, вычисляемой на каждый файл.
+   * @param fileName
+   */
+  getUploadCategory: function getUploadCategory(fileName) {
+    var extension = (fileName.split('.').pop() || '').toLowerCase();
+    if (extension === 'img') {
+      return 'firmware';
+    }
+    if (extension === 'zip' || extension === 'tar') {
+      return 'archive';
+    }
+    return '';
+  },
+  /**
+   * Привязка кнопки загрузки бекапа к Resumable с category, зависящей от расширения файла
+   */
+  attachUploadButton: function attachUploadButton() {
+    var buttonElement = document.getElementById('uploadbtn');
+    if (!buttonElement) {
+      return;
+    }
+    var resumableConfig = FilesAPI.configureResumable({
+      fileType: ['img', 'zip', 'xml', 'csv', 'tar'],
+      query: function query(file) {
+        var originalName = file.name || file.fileName;
+        return {
+          category: backupIndex.getUploadCategory(originalName)
+        };
+      }
+    });
+    var r = new Resumable(resumableConfig);
+    r.assignBrowse(buttonElement);
+    FilesAPI.setupResumableEvents(r, backupIndex.cbResumable, true);
   },
   /**
    * Изменение статуса кнопок при изменении статуса модуля
