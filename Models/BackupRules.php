@@ -65,7 +65,7 @@ class BackupRules extends ModulesModelsBase
      *
      * @Column(type="integer", nullable=true)
      */
-    public $every;
+    public $every = 0;
 
     /**
      * Время создания бекапа

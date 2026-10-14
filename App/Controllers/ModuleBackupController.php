@@ -216,7 +216,9 @@ class ModuleBackupController extends BaseController
                     }
                     break;
                 default:
-                    $rule->$name = $data[$name];
+                    if (array_key_exists($name, $data)) {
+                        $rule->$name = $data[$name];
+                    }
             }
         }
         // Пройдемся по чекбоксам того что нужно сохранять и сформируем JSON

@@ -1701,7 +1701,7 @@ class Backup extends PbxExtensionBase
             if ($this->remote) {
                 // Записи разговоров бекапим только на удалённый сервер.
                 // Локально это бессмысленно — файлы уже на этом же диске.
-                Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f -name '*.mp3'", $out);
+                Processes::mwExec("{$findPath} {$this->dirs['astspooldir']} -type f \\( -name '*.mp3' -o -name '*.webm' \\)", $out);
                 foreach ($out as $filename) {
                     $flist .= 'backup-records:' . $filename . "\n";
                 }
