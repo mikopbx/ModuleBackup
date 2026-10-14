@@ -130,7 +130,17 @@ class BackupConf extends ConfigClass
      */
     private function getExecutionTime(BackupRules $cmd): string{
         $every = (string)$cmd->every;
-        $day = ('0' === $every) ? '*' : $every;
+        // Белый список вместо сравнения только с '0': значение every (nullable-колонка) может
+        // прийти как NULL/'' при повреждённых данных — без этой проверки день недели попадал
+        // в cron-строку пустой строкой вместо '*', что ломало day-of-week поле в crontab.
+        $isValidWeekday = in_array($every, ['1', '2', '3', '4', '5', '6', '7'], true);
+        if (!$isValidWeekday && '0' !== $every) {
+            Util::sysLogMsg(
+                __CLASS__,
+                "Некорректное значение every='{$every}' у правила бекапа id={$cmd->id}, расписание запущено ежедневно"
+            );
+        }
+        $day = $isValidWeekday ? $every : '*';
         $arr_time = explode(':', $cmd->at_time);
         if (count($arr_time) !== 2) {
             $h = '*';
