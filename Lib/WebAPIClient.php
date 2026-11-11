@@ -22,8 +22,9 @@ namespace Modules\ModuleBackup\Lib;
 use MikoPBX\Core\System\MikoPBXConfig;
 use Exception;
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\BadResponseException;
+use GuzzleHttp\Exception\GuzzleException;
+use Psr\Http\Client\NetworkExceptionInterface;
 
 class WebAPIClient
 {
@@ -90,15 +91,24 @@ class WebAPIClient
             $raw = $response->getBody()->getContents();
             $result = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
 
-        } catch (ConnectException $e) {
+        } catch (NetworkExceptionInterface $e) {
+            // No response at all: refused, DNS, connect or read timeout. PSR-18
+            // interface so it matches ConnectException on Guzzle 7 and every
+            // NetworkException subclass on Guzzle 8.
             $result = [
                 'message' => 'Connection error: ' . $e->getMessage(),
             ];
 
-        } catch (RequestException $e) {
+        } catch (BadResponseException $e) {
+            // 4xx/5xx: the response is always present (Guzzle 7 and 8)
             $result = [
                 'message' => 'Request error: ' . $e->getMessage(),
-                'response' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null,
+                'response' => (string)$e->getResponse()->getBody(),
+            ];
+
+        } catch (GuzzleException $e) {
+            $result = [
+                'message' => 'Request error: ' . $e->getMessage(),
             ];
 
         } catch (\JsonException $e) {
